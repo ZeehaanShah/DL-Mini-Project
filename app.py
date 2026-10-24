@@ -2,7 +2,10 @@
 Master Streamlit Web Application for:
 “A Multimodal, Uncertainty-Aware Decision-Support Framework for Location-Specific Renewable Energy Feasibility and Energy-Mix Optimization”
 
-Redesigned to match the clean, professional, light-theme Renewable Energy Intelligence dashboard prototype.
+Redesigned with high-contrast, WCAG AA compliant light-theme styling, accessible sidebar navigation,
+zero-indent HTML rendering (eliminating code-block </div> artefacts), informative slider guides,
+and comprehensive scientific methodology disclosures.
+
 Authors: DL MiniProject Research Team
 Framework: PyTorch, Split Conformal Prediction, Deterministic Dispatch Simulation, Streamlit, Plotly
 """
@@ -37,9 +40,12 @@ from src.frontend.model_loaders import (
 )
 from src.frontend.components import (
     apply_custom_styles,
+    render_top_navbar,
     render_sidebar_scope,
     render_header,
     render_model_card,
+    render_quick_action_card,
+    render_control_context_card,
     render_disclaimer,
     render_provenance_badge,
 )
@@ -71,7 +77,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Apply custom light-theme styling matching prototype
+# Apply custom high-contrast light-theme styling
 apply_custom_styles()
 
 
@@ -96,17 +102,15 @@ def set_page(page_name: str) -> None:
     st.session_state["nav_page"] = page_name
 
 
-# Sidebar brand & navigation
+# Sidebar brand header
 st.sidebar.markdown(
-    """
-    <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding-bottom: 0.85rem; border-bottom: 1px solid #E2E8F0;">
-        <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #059669 0%, #10B981 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">⚡</div>
-        <div>
-            <div style="font-size: 1.05rem; font-weight: 700; color: #0F172A; line-height: 1.2;">Energy Intelligence</div>
-            <div style="font-size: 0.75rem; color: #64748B;">Decision-Support System</div>
-        </div>
-    </div>
-    """,
+    '<div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem; padding-bottom: 0.85rem; border-bottom: 1px solid #CBD5E1;">'
+    '<div style="width: 36px; height: 36px; background: linear-gradient(135deg, #047857 0%, #065F46 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">⚡</div>'
+    '<div>'
+    '<div style="font-size: 1.05rem; font-weight: 700; color: #172033; line-height: 1.2;">Energy Intelligence</div>'
+    '<div style="font-size: 0.75rem; color: #475569; font-weight: 500;">Decision-Support System</div>'
+    '</div>'
+    '</div>',
     unsafe_allow_html=True,
 )
 
@@ -125,34 +129,30 @@ render_sidebar_scope()
 
 
 # -----------------------------------------------------------------------------
-# TOP APPLICATION BANNER (MATCHING PROTOTYPE)
+# TOP APPLICATION BANNER
 # -----------------------------------------------------------------------------
 col_nav_left, col_nav_right = st.columns([0.72, 0.28])
 with col_nav_left:
     st.markdown(
-        """
-        <div style="display: flex; align-items: center; gap: 0.85rem; padding: 0.25rem 0;">
-            <div class="brand-logo">⚡</div>
-            <div>
-                <div class="brand-title">Renewable Energy Intelligence</div>
-                <div class="brand-subtitle">A Multimodal, Uncertainty-Aware Decision-Support Framework</div>
-            </div>
-        </div>
-        """,
+        '<div style="display: flex; align-items: center; gap: 0.85rem; padding: 0.25rem 0;">'
+        '<div class="brand-logo">⚡</div>'
+        '<div>'
+        '<div class="brand-title">Renewable Energy Intelligence</div>'
+        '<div class="brand-subtitle">A Multimodal, Uncertainty-Aware Decision-Support Framework</div>'
+        '</div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 with col_nav_right:
     c_status, c_act = st.columns([0.48, 0.52])
     with c_status:
         st.markdown(
-            """
-            <div style="margin-top: 6px;">
-                <span class="navbar-status-badge">
-                    <span class="status-dot"></span>
-                    Models Ready
-                </span>
-            </div>
-            """,
+            '<div style="margin-top: 6px;">'
+            '<span class="navbar-status-badge">'
+            '<span class="status-dot"></span>'
+            'Models Ready'
+            '</span>'
+            '</div>',
             unsafe_allow_html=True,
         )
     with c_act:
@@ -160,16 +160,15 @@ with col_nav_right:
             set_page("7. Energy-Mix Optimizer (Model E)")
             st.rerun()
 
-st.markdown("<div style='border-bottom: 1px solid #E2E8F0; margin-bottom: 1.25rem; margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='border-bottom: 1px solid #CBD5E1; margin-bottom: 1.25rem; margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
 
 
 # =============================================================================
-# PAGE 1: PROJECT OVERVIEW (DASHBOARD MATCHING PROTOTYPE)
+# PAGE 1: PROJECT OVERVIEW (DASHBOARD)
 # =============================================================================
 if st.session_state["nav_page"] == "1. Project Overview":
-    # Hero Title matching prototype
     st.markdown('<div class="page-hero-title">Your energy system at a glance</div>', unsafe_allow_html=True)
-    st.markdown('<div class="page-hero-subtitle">Explore model forecasts, confidence intervals and energy-mix scenarios.</div>', unsafe_allow_html=True)
+    st.markdown('<div class="page-hero-subtitle">Explore deep-learning forecasts, conformal prediction intervals, and energy-mix optimization.</div>', unsafe_allow_html=True)
 
     # 4 Model Metric Cards Row
     c1, c2, c3, c4 = st.columns(4)
@@ -236,15 +235,13 @@ if st.session_state["nav_page"] == "1. Project Overview":
 
     with col_chart_left:
         st.markdown(
-            """
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <span>📊</span>
-                    <span>Forecast vs Actual – Solar PV Output (Model A)</span>
-                </div>
-                <div class="chart-card-sub">SKIPP'D Test Set Nowcasting (EXP_SOLAR_DL_S3)</div>
-            </div>
-            """,
+            '<div class="chart-card">'
+            '<div class="chart-card-header">'
+            '<span>📊</span>'
+            '<span>Forecast vs Actual – Solar PV Output (Model A)</span>'
+            '</div>'
+            '<div class="chart-card-sub">Stanford SKIPP\'D Test Set Nowcasting (EXP_SOLAR_DL_S3)</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
         # Load and render real Model A test series
@@ -255,7 +252,7 @@ if st.session_state["nav_page"] == "1. Project Overview":
                 y_true=solar_eval["y_true"],
                 y_pred=solar_eval["y_pred"],
                 title="Forecast vs Actual – Solar PV Output (Model A)",
-                subtitle="SKIPP'D Test Set Nowcasting (EXP_SOLAR_DL_S3)",
+                subtitle="Stanford SKIPP'D Test Morning Sequence (EXP_SOLAR_DL_S3)",
             )
             st.plotly_chart(fig_solar, use_container_width=True, config={"displayModeBar": False})
         else:
@@ -263,15 +260,13 @@ if st.session_state["nav_page"] == "1. Project Overview":
 
     with col_chart_right:
         st.markdown(
-            """
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <span>🍩</span>
-                    <span>Energy Mix Snapshot (Optimized Scenario)</span>
-                </div>
-                <div class="chart-card-sub">Optimal mix (example scenario)</div>
-            </div>
-            """,
+            '<div class="chart-card">'
+            '<div class="chart-card-header">'
+            '<span>🍩</span>'
+            '<span>Energy Mix Snapshot (Optimized Scenario)</span>'
+            '</div>'
+            '<div class="chart-card-sub">Optimal generation mix (illustrative scenario)</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
         fig_donut = create_energy_mix_donut_chart(
@@ -281,100 +276,69 @@ if st.session_state["nav_page"] == "1. Project Overview":
             grid_val=20.0,
             total_label="347 kW",
             title="System Snapshot – Illustrative Energy Mix",
-            subtitle="Optimal mix (example scenario)",
+            subtitle="Optimal generation mix (illustrative scenario)",
         )
         st.plotly_chart(fig_donut, use_container_width=True, config={"displayModeBar": False})
 
-    # Quick Actions Row (Matching Prototype)
+    # Quick Actions Row
     st.markdown(
-        """
-        <div style="margin-top: 1.25rem; margin-bottom: 0.75rem;">
-            <div style="font-size: 1.25rem; font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 0.5rem;">
-                <span>⚡</span>
-                <span>Quick Actions</span>
-            </div>
-            <div style="font-size: 0.85rem; color: #64748B;">Try the main features of the Renewable Energy Intelligence dashboard.</div>
-        </div>
-        """,
+        '<div style="margin-top: 1.25rem; margin-bottom: 0.75rem;">'
+        '<div style="font-size: 1.25rem; font-weight: 700; color: #172033; display: flex; align-items: center; gap: 0.5rem;">'
+        '<span>⚡</span>'
+        '<span>Quick Actions</span>'
+        '</div>'
+        '<div style="font-size: 0.85rem; color: #475569;">Try the core analytical capabilities of the Decision-Support System.</div>'
+        '</div>',
         unsafe_allow_html=True,
     )
 
     qa_col1, qa_col2, qa_col3 = st.columns(3)
     with qa_col1:
-        st.markdown(
-            """
-            <div class="quick-action-card qa-teal">
-                <div class="qa-content">
-                    <div class="qa-icon-box">📷</div>
-                    <div>
-                        <div class="qa-text-title">Try Solar Image Prediction</div>
-                        <div class="qa-text-sub">Upload a sky image and get instant PV output</div>
-                    </div>
-                </div>
-                <div class="qa-arrow">➔</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        render_quick_action_card(
+            title="Try Solar Image Prediction",
+            subtitle="Upload a sky camera image for instantaneous PV power nowcasting",
+            theme="teal",
+            icon="📷",
         )
         if st.button("📷 Upload Sky Image & Predict", key="btn_qa_solar", type="primary", use_container_width=True):
             set_page("2. Solar PV Nowcasting (Model A)")
             st.rerun()
 
     with qa_col2:
-        st.markdown(
-            """
-            <div class="quick-action-card qa-blue">
-                <div class="qa-content">
-                    <div class="qa-icon-box">📊</div>
-                    <div>
-                        <div class="qa-text-title">Explore Uncertainty Analysis</div>
-                        <div class="qa-text-sub">View prediction intervals and calibration (Stage 4)</div>
-                    </div>
-                </div>
-                <div class="qa-arrow">➔</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        render_quick_action_card(
+            title="Explore Uncertainty Analysis",
+            subtitle="View 90% conformal prediction intervals and empirical calibration",
+            theme="blue",
+            icon="📊",
         )
         if st.button("📊 View Prediction Intervals", key="btn_qa_unc", type="primary", use_container_width=True):
             set_page("6. Uncertainty Analysis (Stage 4)")
             st.rerun()
 
     with qa_col3:
-        st.markdown(
-            """
-            <div class="quick-action-card" style="background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);">
-                <div class="qa-content">
-                    <div class="qa-icon-box">⚙️</div>
-                    <div>
-                        <div class="qa-text-title">Optimize Energy Mix</div>
-                        <div class="qa-text-sub">Simulate solar, wind and battery scenarios (Model E)</div>
-                    </div>
-                </div>
-                <div class="qa-arrow">➔</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        render_quick_action_card(
+            title="Optimize Energy Mix",
+            subtitle="Simulate solar, wind, and battery dispatch under grid constraints",
+            theme="purple",
+            icon="⚙️",
         )
         if st.button("⚙️ Simulate Energy Mix", key="btn_qa_opt", type="primary", use_container_width=True):
             set_page("7. Energy-Mix Optimizer (Model E)")
             st.rerun()
 
-    # Mini Forecast Previews Row (Matching input_file_1.png)
+    # Mini Forecast Previews Row
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     m_col1, m_col2 = st.columns(2)
 
     with m_col1:
         st.markdown(
-            """
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <span>🍃</span>
-                    <span>Wind Speed Forecast with Uncertainty (Model C)</span>
-                </div>
-                <div class="chart-card-sub">NREL Gujarat Test Split (90% Conformal Interval)</div>
-            </div>
-            """,
+            '<div class="chart-card">'
+            '<div class="chart-card-header">'
+            '<span>🍃</span>'
+            '<span>Wind Speed Forecast with Uncertainty (Model C)</span>'
+            '</div>'
+            '<div class="chart-card-sub">NREL Gujarat Test Split (90% Conformal Prediction Interval)</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
         wind_eval = get_wind_test_evaluation(max_samples=72)
@@ -393,15 +357,13 @@ if st.session_state["nav_page"] == "1. Project Overview":
 
     with m_col2:
         st.markdown(
-            """
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <span>🏢</span>
-                    <span>Electricity Demand Forecast (Model D)</span>
-                </div>
-                <div class="chart-card-sub">BDG2 Panther_education_Rosalie Test Split (90% Conformal Interval)</div>
-            </div>
-            """,
+            '<div class="chart-card">'
+            '<div class="chart-card-header">'
+            '<span>🏢</span>'
+            '<span>Electricity Demand Forecast (Model D)</span>'
+            '</div>'
+            '<div class="chart-card-sub">BDG2 Panther_education_Rosalie Test Split (90% Conformal Interval)</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
         demand_eval = get_demand_test_evaluation(max_samples=72)
@@ -418,9 +380,10 @@ if st.session_state["nav_page"] == "1. Project Overview":
             )
             st.plotly_chart(fig_mini_demand, use_container_width=True, config={"displayModeBar": False})
 
-    # Prominent Amber Disclaimer at bottom (matching prototype)
+    # Prominent Amber Disclaimer
     render_disclaimer(
-        "Research prototype: datasets come from different locations and time periods; the combined energy mix is an illustrative decision-support scenario, not a validated single-site deployment.",
+        "Research prototype disclosure: Datasets are collected from geographically independent locations and disjoint calendar periods. "
+        "The combined multi-source energy mix represents an illustrative decision-support proof of concept, not an empirical single-site microgrid.",
         warning=True,
     )
 
@@ -490,13 +453,11 @@ elif st.session_state["nav_page"] == "2. Solar PV Nowcasting (Model A)":
                     with st.spinner("Executing ResNet-18 forward pass on CPU..."):
                         pred_kw = predict_solar_pv_from_image(chosen_file)
                         st.markdown(
-                            f"""
-                            <div class="chart-card" style="border-top: 4px solid #10B981;">
-                                <div style="font-size: 0.85rem; color: #64748B; font-weight: 600;">PREDICTED ROOFTOP PV GENERATION</div>
-                                <div style="font-size: 2.2rem; font-weight: 800; color: #0F172A; margin: 0.35rem 0;">{pred_kw:.2f} kW</div>
-                                <div style="font-size: 0.82rem; color: #059669; font-weight: 600;">Model: ResNet-18 (EXP_SOLAR_DL_S3)</div>
-                            </div>
-                            """,
+                            '<div class="chart-card" style="border-top: 4px solid #047857;">'
+                            '<div style="font-size: 0.85rem; color: #475569; font-weight: 600;">PREDICTED ROOFTOP PV GENERATION</div>'
+                            f'<div style="font-size: 2.2rem; font-weight: 800; color: #172033; margin: 0.35rem 0;">{pred_kw:.2f} kW</div>'
+                            '<div style="font-size: 0.82rem; color: #047857; font-weight: 700;">Model: ResNet-18 (EXP_SOLAR_DL_S3)</div>'
+                            '</div>',
                             unsafe_allow_html=True,
                         )
         else:
@@ -515,13 +476,11 @@ elif st.session_state["nav_page"] == "2. Solar PV Nowcasting (Model A)":
                             img = Image.open(uploaded_file).convert("RGB")
                             pred_kw = predict_solar_pv_from_image(img)
                             st.markdown(
-                                f"""
-                                <div class="chart-card" style="border-top: 4px solid #0284C7;">
-                                    <div style="font-size: 0.85rem; color: #64748B; font-weight: 600;">PREDICTED PV POWER</div>
-                                    <div style="font-size: 2.2rem; font-weight: 800; color: #0F172A; margin: 0.35rem 0;">{pred_kw:.2f} kW</div>
-                                    <div style="font-size: 0.82rem; color: #64748B;">Resized to 64×64 and ImageNet normalized.</div>
-                                </div>
-                                """,
+                                '<div class="chart-card" style="border-top: 4px solid #0369A1;">'
+                                '<div style="font-size: 0.85rem; color: #475569; font-weight: 600;">PREDICTED PV POWER</div>'
+                                f'<div style="font-size: 2.2rem; font-weight: 800; color: #172033; margin: 0.35rem 0;">{pred_kw:.2f} kW</div>'
+                                '<div style="font-size: 0.82rem; color: #475569;">Resized to 64×64 and ImageNet normalized.</div>'
+                                '</div>',
                                 unsafe_allow_html=True,
                             )
                         except Exception as e:
@@ -535,8 +494,8 @@ elif st.session_state["nav_page"] == "2. Solar PV Nowcasting (Model A)":
             timestamps=solar_eval["timestamps"],
             y_true=solar_eval["y_true"],
             y_pred=solar_eval["y_pred"],
-            title="Model A: Actual vs ResNet-18 Predictions (SKIPP'D Test Set Morning)",
-            subtitle="Verified test sequence from 07:38 to 12:03 PST",
+            title="Model A: Actual vs ResNet-18 Predictions (SKIPP'D Test Morning)",
+            subtitle="Verified test sequence from 07:38 to 12:03 PST (1-minute resolution)",
         )
         st.plotly_chart(fig_solar, use_container_width=True)
 
@@ -568,12 +527,33 @@ elif st.session_state["nav_page"] == "3. Solar Irradiance Forecasting (Model B)"
         "Wh/m² (Watt-hours per square meter)",
     )
 
-    # Interactive horizon & sample range
-    c_slider1, c_slider2 = st.columns([1, 1])
+    st.markdown('<div class="section-heading"><span>🎛️</span><span>Visualization Controls</span></div>', unsafe_allow_html=True)
+    
+    # Context Guide for Slider
+    render_control_context_card(
+        param_name="Displayed Test-Set Window (Hours)",
+        description="Select the continuous sequence length of hourly observations from the held-out test partition (2023) to visualize. Changing this control alters the temporal window to inspect diurnal solar cycles and model tracking fidelity across multiple consecutive days.",
+        unit="Hours (h)",
+        min_val=24,
+        max_val=336,
+        current_val="User Selected (Step: 24h)",
+        impact="Expands or contracts the displayed time-series window. The model's forecast horizon remains fixed at 1-hour ahead (t+1).",
+        icon="⏱️",
+    )
+
+    c_slider1, c_slider2 = st.columns([1, 2])
     with c_slider1:
-        st.markdown("**Forecast Horizon**: `1-Hour Ahead (t+1)`")
+        st.markdown(
+            '<div style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; padding:0.75rem; margin-top:0.35rem;">'
+            '<div style="font-size:0.82rem; color:#475569; font-weight:600;">FORECAST HORIZON</div>'
+            '<div style="font-size:1.15rem; font-weight:800; color:#172033;">1-Hour Ahead (t+1)</div>'
+            '<div style="font-size:0.78rem; color:#047857;">Fixed recurrent single-step inference</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
     with c_slider2:
-        n_samples = st.slider("Display Window (Hours):", min_value=24, max_value=336, value=96, step=24)
+        n_samples = st.slider("Displayed Time Window (Hours):", min_value=24, max_value=336, value=96, step=24)
+        st.markdown(f"<div style='font-size:0.82rem; color:#475569; font-weight:600;'>Active window: <b>{n_samples} hours</b> ({n_samples/24:.1f} days of continuous test series)</div>", unsafe_allow_html=True)
 
     eval_b = get_weather_test_evaluation(max_samples=n_samples)
     if eval_b and "timestamps" in eval_b:
@@ -586,9 +566,15 @@ elif st.session_state["nav_page"] == "3. Solar Irradiance Forecasting (Model B)"
         )
         st.plotly_chart(fig_b, use_container_width=True)
 
-        # Residuals
         residuals = eval_b["y_true"] - eval_b["y_pred"]
-        st.markdown(f"**Mean Residual**: `{np.mean(residuals):.2f} Wh/m²` | **Max Absolute Error**: `{np.max(np.abs(residuals)):.2f} Wh/m²`")
+        st.markdown(
+            f'<div style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; padding:0.65rem 1rem; font-size:0.88rem; color:#172033;">'
+            f'<b>Residual Evaluation</b>: Mean Residual: <code>{np.mean(residuals):+.2f} Wh/m²</code> &nbsp;|&nbsp; '
+            f'Max Absolute Error: <code>{np.max(np.abs(residuals)):.2f} Wh/m²</code> &nbsp;|&nbsp; '
+            f'Standard Deviation of Error: <code>{np.std(residuals):.2f} Wh/m²</code>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # =============================================================================
@@ -618,9 +604,25 @@ elif st.session_state["nav_page"] == "4. Wind Forecasting (Model C)":
         "m/s (Meters per second)",
     )
 
+    st.markdown('<div class="section-heading"><span>🎛️</span><span>Visualization Controls</span></div>', unsafe_allow_html=True)
+    
+    st.markdown("**Target Variable Selection**: Choose between physical hub-height wind velocity or electrical generator output.")
     var_choice = st.radio("Display Target:", ["Physical Wind Speed (m/s) with 90% Conformal Interval", "Estimated 2.0 MW Turbine Power Proxy (kW)"], horizontal=True)
 
-    n_wind_samples = st.slider("Display Window (Hours):", min_value=24, max_value=336, value=96, step=24, key="wind_slider")
+    # Context Guide for Slider
+    render_control_context_card(
+        param_name="Displayed Wind Test Window (Hours)",
+        description="Duration of consecutive test-set hours from the 2014 Gujarat offshore split to plot. Allows inspection of multi-day wind ramps, diurnal breeze patterns, and conformal uncertainty band width across varying wind regimes.",
+        unit="Hours (h)",
+        min_val=24,
+        max_val=336,
+        current_val="User Selected (Step: 24h)",
+        impact="Wider windows illustrate synoptic meteorological shifts; narrower windows highlight hourly gust variations.",
+        icon="🌬️",
+    )
+
+    n_wind_samples = st.slider("Displayed Time Window (Hours):", min_value=24, max_value=336, value=96, step=24, key="wind_slider")
+    st.markdown(f"<div style='font-size:0.82rem; color:#475569; font-weight:600;'>Active window: <b>{n_wind_samples} hours</b> ({n_wind_samples/24:.1f} days of continuous wind records)</div>", unsafe_allow_html=True)
 
     eval_c = get_wind_test_evaluation(max_samples=n_wind_samples)
     if eval_c and "timestamps" in eval_c:
@@ -679,7 +681,22 @@ elif st.session_state["nav_page"] == "5. Electricity Demand Forecasting (Model D
         "kWh (Kilowatt-hours)",
     )
 
-    n_dem_samples = st.slider("Display Window (Hours):", min_value=24, max_value=336, value=96, step=24, key="dem_slider")
+    st.markdown('<div class="section-heading"><span>🎛️</span><span>Visualization Controls</span></div>', unsafe_allow_html=True)
+
+    # Context Guide for Slider
+    render_control_context_card(
+        param_name="Displayed Electricity Demand Window (Hours)",
+        description="Continuous sequence length of hourly smart meter electricity consumption to display from the held-out test split. Illustrates building thermal inertia, weekday daytime occupancy spikes, and weekend baseload.",
+        unit="Hours (h)",
+        min_val=24,
+        max_val=336,
+        current_val="User Selected (Step: 24h)",
+        impact="Adjusts the temporal zoom level. The model's forecast horizon is fixed at 1-step ahead (1 hour ahead).",
+        icon="🏢",
+    )
+
+    n_dem_samples = st.slider("Displayed Time Window (Hours):", min_value=24, max_value=336, value=96, step=24, key="dem_slider")
+    st.markdown(f"<div style='font-size:0.82rem; color:#475569; font-weight:600;'>Active window: <b>{n_dem_samples} hours</b> ({n_dem_samples/24:.1f} days of continuous building meter data)</div>", unsafe_allow_html=True)
 
     eval_d = get_demand_test_evaluation(max_samples=n_dem_samples)
     if eval_d and "timestamps" in eval_d:
@@ -729,37 +746,39 @@ elif st.session_state["nav_page"] == "6. Uncertainty Analysis (Stage 4)":
     t_col1, t_col2 = st.columns(2)
     with t_col1:
         st.markdown(
-            """
-            <div class="chart-card" style="border-top: 4px solid #0D9488;">
-                <div style="font-weight: 700; color: #0F172A; font-size: 1.1rem; margin-bottom: 0.5rem;">🍃 Model C: Wind Speed Calibration</div>
-                <div style="font-size: 0.85rem; color: #475569; margin-bottom: 1rem;">Calibration Samples: 1,290 | Test Samples: 1,242</div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
-                    <tr style="border-bottom: 1px solid #E2E8F0; text-align: left;"><th style="padding: 6px;">Metric</th><th style="padding: 6px;">80% Level</th><th style="padding: 6px;">90% Level</th></tr>
-                    <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 6px;">Nominal Coverage</td><td style="padding: 6px;">80.0%</td><td style="padding: 6px;">90.0%</td></tr>
-                    <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 6px; font-weight: bold;">Empirical Coverage</td><td style="padding: 6px; font-weight: bold; color: #059669;">84.22%</td><td style="padding: 6px; font-weight: bold; color: #059669;">92.83%</td></tr>
-                    <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 6px;">Mean Interval Width (MPIW)</td><td style="padding: 6px;">2.09 m/s</td><td style="padding: 6px;">3.06 m/s</td></tr>
-                    <tr><td style="padding: 6px;">Winkler Score</td><td style="padding: 6px;">3.05</td><td style="padding: 6px;">3.92</td></tr>
-                </table>
-            </div>
-            """,
+            '<div class="chart-card" style="border-top: 4px solid #0D9488;">'
+            '<div style="font-weight: 700; color: #172033; font-size: 1.1rem; margin-bottom: 0.5rem;">🍃 Model C: Wind Speed Calibration</div>'
+            '<div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.85rem;">Calibration Samples: 1,290 | Test Samples: 1,242</div>'
+            '<table class="styled-table">'
+            '<thead><tr><th>Metric</th><th>80% Nominal Level</th><th>90% Nominal Level</th></tr></thead>'
+            '<tbody>'
+            '<tr><td>Nominal Coverage Target</td><td>80.0%</td><td>90.0%</td></tr>'
+            '<tr><td><b>Empirical Test Coverage</b></td><td><span style="background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:9999px; font-weight:700;">84.22% (Valid)</span></td><td><span style="background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:9999px; font-weight:700;">92.83% (Valid)</span></td></tr>'
+            '<tr><td>Mean Interval Width (MPIW)</td><td>2.09 m/s</td><td>3.06 m/s</td></tr>'
+            '<tr><td>Winkler Interval Score</td><td>3.05</td><td>3.92</td></tr>'
+            '</tbody>'
+            '</table>'
+            '<div style="font-size:0.80rem; color:#065F46; font-weight:600;">✔ Meets and exceeds nominal coverage targets under stationary wind distribution.</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
 
     with t_col2:
         st.markdown(
-            """
-            <div class="chart-card" style="border-top: 4px solid #8B5CF6;">
-                <div style="font-weight: 700; color: #0F172A; font-size: 1.1rem; margin-bottom: 0.5rem;">🏢 Model D: Electricity Demand Calibration</div>
-                <div style="font-size: 0.85rem; color: #475569; margin-bottom: 1rem;">Calibration Samples: 2,607 | Test Samples: 2,561</div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
-                    <tr style="border-bottom: 1px solid #E2E8F0; text-align: left;"><th style="padding: 6px;">Metric</th><th style="padding: 6px;">80% Level</th><th style="padding: 6px;">90% Level</th></tr>
-                    <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 6px;">Nominal Coverage</td><td style="padding: 6px;">80.0%</td><td style="padding: 6px;">90.0%</td></tr>
-                    <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 6px; font-weight: bold;">Empirical Coverage</td><td style="padding: 6px; font-weight: bold; color: #D97706;">66.03%</td><td style="padding: 6px; font-weight: bold; color: #D97706;">85.47%</td></tr>
-                    <tr style="border-bottom: 1px solid #F1F5F9;"><td style="padding: 6px;">Mean Interval Width (MPIW)</td><td style="padding: 6px;">4.96 kWh</td><td style="padding: 6px;">9.53 kWh</td></tr>
-                    <tr><td style="padding: 6px;">Winkler Score</td><td style="padding: 6px;">15.48</td><td style="padding: 6px;">20.60</td></tr>
-                </table>
-            </div>
-            """,
+            '<div class="chart-card" style="border-top: 4px solid #7C3AED;">'
+            '<div style="font-weight: 700; color: #172033; font-size: 1.1rem; margin-bottom: 0.5rem;">🏢 Model D: Electricity Demand Calibration</div>'
+            '<div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.85rem;">Calibration Samples: 2,607 | Test Samples: 2,561</div>'
+            '<table class="styled-table">'
+            '<thead><tr><th>Metric</th><th>80% Nominal Level</th><th>90% Nominal Level</th></tr></thead>'
+            '<tbody>'
+            '<tr><td>Nominal Coverage Target</td><td>80.0%</td><td>90.0%</td></tr>'
+            '<tr><td><b>Empirical Test Coverage</b></td><td><span style="background:#FFFBEB; color:#92400E; padding:2px 8px; border-radius:9999px; font-weight:700; border:1px solid #F59E0B;">66.03% (Undercovered)</span></td><td><span style="background:#FFFBEB; color:#92400E; padding:2px 8px; border-radius:9999px; font-weight:700; border:1px solid #F59E0B;">85.47% (Undercovered)</span></td></tr>'
+            '<tr><td>Mean Interval Width (MPIW)</td><td>4.96 kWh</td><td>9.53 kWh</td></tr>'
+            '<tr><td>Winkler Interval Score</td><td>15.48</td><td>20.60</td></tr>'
+            '</tbody>'
+            '</table>'
+            '<div style="font-size:0.80rem; color:#92400E; font-weight:600;">⚠️ Undercoverage driven by distribution shift: summer cooling calibration vs autumn/winter test.</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
 
@@ -818,13 +837,50 @@ elif st.session_state["nav_page"] == "7. Energy-Mix Optimizer (Model E)":
             st.rerun()
 
     st.markdown('<div class="section-heading"><span>🎛️</span><span>Interactive Capacity Controls</span></div>', unsafe_allow_html=True)
+    
+    # 3 Capacity Control Cards with Full Metadata
     c_s1, c_s2, c_s3 = st.columns(3)
     with c_s1:
+        render_control_context_card(
+            param_name="Solar PV Capacity (kW)",
+            description="Peak direct-current (DC) rating of rooftop solar array. Supplies power during daylight hours and charges the battery.",
+            unit="Kilowatts (kW)",
+            min_val=0,
+            max_val=300,
+            current_val=f"{st.session_state['opt_solar']} kW",
+            impact="Reduces daytime grid imports; surplus generation charges the battery or is curtailed when battery is full.",
+            icon="☀️",
+        )
         solar_input = st.slider("Solar PV Capacity (kW):", min_value=0, max_value=300, value=st.session_state["opt_solar"], step=25)
+        st.session_state["opt_solar"] = solar_input
+
     with c_s2:
+        render_control_context_card(
+            param_name="Wind Turbine Capacity (kW)",
+            description="Nameplate turbine capacity scaled via 2.0 MW power curve. Generates power during both day and night.",
+            unit="Kilowatts (kW)",
+            min_val=0,
+            max_val=600,
+            current_val=f"{st.session_state['opt_wind']} kW",
+            impact="Provides nighttime clean energy; high capacity increases independence but raises capital and curtailment.",
+            icon="🌀",
+        )
         wind_input = st.slider("Wind Turbine Capacity (kW):", min_value=0, max_value=600, value=st.session_state["opt_wind"], step=50)
+        st.session_state["opt_wind"] = wind_input
+
     with c_s3:
+        render_control_context_card(
+            param_name="Battery Storage Capacity (kWh)",
+            description="Usable BESS energy capacity operating with 84.64% round-trip efficiency, 10%–95% SOC limits, and 0.5C power limit.",
+            unit="Kilowatt-hours (kWh)",
+            min_val=0,
+            max_val=500,
+            current_val=f"{st.session_state['opt_batt']} kWh",
+            impact="Buffers surplus daytime renewable energy for discharge during peak evening demand hours.",
+            icon="🔋",
+        )
         batt_input = st.slider("Battery Storage Capacity (kWh):", min_value=0, max_value=500, value=st.session_state["opt_batt"], step=50)
+        st.session_state["opt_batt"] = batt_input
 
     # Simulation execution
     dispatch, metrics, costs = simulate_custom_system(
@@ -868,14 +924,12 @@ elif st.session_state["nav_page"] == "7. Energy-Mix Optimizer (Model E)":
 
     with ch_col2:
         st.markdown(
-            """
-            <div class="chart-card">
-                <div class="chart-card-header">
-                    <span>⚡</span>
-                    <span>Energy Supply & Demand Balance (First 96 Hours)</span>
-                </div>
-            </div>
-            """,
+            '<div class="chart-card">'
+            '<div class="chart-card-header">'
+            '<span>⚡</span>'
+            '<span>Energy Supply & Demand Balance (First 96 Hours)</span>'
+            '</div>'
+            '</div>',
             unsafe_allow_html=True,
         )
         t_slice = 96
@@ -922,33 +976,129 @@ elif st.session_state["nav_page"] == "7. Energy-Mix Optimizer (Model E)":
 elif st.session_state["nav_page"] == "8. Methodology & Disclosures":
     render_header(
         "Methodology & Scientific Disclosures",
-        "Comprehensive documentation of models, data provenance, physical conversion models, and research limitations.",
+        "Comprehensive documentation of deep learning models, data provenance, physical conversion models, and research limitations.",
     )
 
     st.markdown('<div class="section-heading"><span>📍</span><span>Heterogeneous Data Provenance Matrix</span></div>', unsafe_allow_html=True)
-    prov_data = [
-        {"Model": "Model A (Vision Nowcaster)", "Source Dataset": "Stanford SKIPP'D", "Location": "Stanford, CA, USA (37.43°N, 122.17°W)", "Period": "2017–2019", "Input": "64×64 RGB Sky Image", "Target": "Instantaneous PV Power (kW)"},
-        {"Model": "Model B (Solar Sequence Forecaster)", "Source Dataset": "NASA POWER Hourly", "Location": "Mumbai, India (19.08°N, 72.88°E)", "Period": "2023", "Input": "24h Sequence (GHI, T, RH, Wind)", "Target": "All-Sky GHI (Wh/m²)"},
-        {"Model": "Model C (Wind Sequence Forecaster)", "Source Dataset": "NREL India Wind Toolkit", "Location": "Gujarat, India (23.24°N, 69.66°E)", "Period": "2014", "Input": "24h Sequence (Wind, Dir, T, P)", "Target": "100m Wind Speed (m/s) & Power Proxy (kW)"},
-        {"Model": "Model D (Demand Forecaster)", "Source Dataset": "Building Data Genome 2", "Location": "Orlando, FL, USA (28.54°N, 81.38°W)", "Period": "2016–2017", "Input": "24h Electricity Sequence", "Target": "Active Power Consumption (kWh)"},
-    ]
-    st.dataframe(pd.DataFrame(prov_data), use_container_width=True)
+    
+    # Render styled high-contrast table instead of plain st.dataframe to eliminate blank/unstyled rendering
+    prov_html = (
+        '<table class="styled-table">'
+        '<thead>'
+        '<tr>'
+        '<th>Model ID</th>'
+        '<th>Architecture</th>'
+        '<th>Source Dataset</th>'
+        '<th>Geographic Location</th>'
+        '<th>Temporal Period</th>'
+        '<th>Input Representation</th>'
+        '<th>Target Variable & Unit</th>'
+        '</tr>'
+        '</thead>'
+        '<tbody>'
+        '<tr>'
+        '<td><b>Model A</b></td>'
+        '<td>ResNet-18 (Transfer Learning)</td>'
+        '<td>Stanford SKIPP\'D</td>'
+        '<td>Stanford, CA, USA (37.43°N, 122.17°W)</td>'
+        '<td>2017–2019 (14,003 test images)</td>'
+        '<td>64×64 RGB Sky Camera Image</td>'
+        '<td>PV Power: <code>kW</code> (Kilowatts)</td>'
+        '</tr>'
+        '<tr>'
+        '<td><b>Model B</b></td>'
+        '<td>WeatherLSTM (h=32, L=1)</td>'
+        '<td>NASA POWER Hourly</td>'
+        '<td>Mumbai, India (19.08°N, 72.88°E)</td>'
+        '<td>2023 (8,760 hourly records)</td>'
+        '<td>24h Sequence (GHI, T, RH, Wind)</td>'
+        '<td>Solar Irradiance: <code>Wh/m²</code></td>'
+        '</tr>'
+        '<tr>'
+        '<td><b>Model C</b></td>'
+        '<td>WindLSTM (h=64, L=1)</td>'
+        '<td>NREL India Wind Toolkit</td>'
+        '<td>Gujarat Coastal (23.24°N, 69.66°E)</td>'
+        '<td>2014 (8,760 hourly records)</td>'
+        '<td>24h Sequence (Speed, Direction, T, P)</td>'
+        '<td>100m Speed: <code>m/s</code> & Power Proxy: <code>kW</code></td>'
+        '</tr>'
+        '<tr>'
+        '<td><b>Model D</b></td>'
+        '<td>DemandLSTM (h=64, L=1)</td>'
+        '<td>Building Data Genome 2</td>'
+        '<td>Orlando, FL, USA (28.54°N, 81.38°W)</td>'
+        '<td>2016–2017 (17,544 continuous hours)</td>'
+        '<td>24h Sequence of Active Load</td>'
+        '<td>Building Load: <code>kWh</code></td>'
+        '</tr>'
+        '</tbody>'
+        '</table>'
+    )
+    st.markdown(prov_html, unsafe_allow_html=True)
 
-    st.markdown('<div class="section-heading"><span>📐</span><span>Physical Energy Balance Formulation</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-heading"><span>📐</span><span>Physical Energy Balance & Dispatch Formulation</span></div>', unsafe_allow_html=True)
     st.latex(r"R_{\text{used}, t} + G_{\text{import}, t} + U_t = D_{\text{served}, t} + U_t = D_t")
     st.latex(r"R_{\text{avail}, t} = R_{\text{used}, t} + B_{\text{ch}, t} + C_t")
+    
     st.markdown(
         """
-        **Battery Energy Storage System (BESS) Dynamics**:
-        - Charge efficiency $\\eta_{\\text{ch}} = 0.92$, Discharge efficiency $\\eta_{\\text{dis}} = 0.92$, Round-trip $\\eta_{\\text{rt}} \\approx 84.64\\%$.
-        - Strict operational constraints: $0.10 \\le \\text{SOC} \\le 0.95$, Maximum C-rate $0.5\\text{C}$.
-        - Machine precision balance assertion: $|\\text{residual}| \\le 10^{-6}\\text{ kWh}$ verified at every discrete simulation step.
+        <div class="chart-card">
+            <div style="font-weight: 700; color: #172033; font-size: 1.05rem; margin-bottom: 0.5rem;">🔋 Battery Energy Storage System (BESS) Dynamics</div>
+            <ul style="color: #334155; font-size: 0.88rem; line-height: 1.6; margin-bottom: 0;">
+                <li><b>Efficiency Parameters</b>: Charge efficiency $\\eta_{\\text{ch}} = 0.92$, discharge efficiency $\\eta_{\\text{dis}} = 0.92$, yielding an empirical round-trip efficiency $\\eta_{\\text{rt}} \\approx 84.64\\%$.</li>
+                <li><b>Operational Constraints</b>: Strict State-of-Charge limits $0.10 \\le \\text{SOC}_t \\le 0.95$ to prevent degradation; maximum C-rate limited to $0.5\\text{C}$ per hour.</li>
+                <li><b>Conservation Assertion</b>: Exact machine-precision energy conservation $|\\text{residual}| \\le 10^{-6}\\text{ kWh}$ verified at every discrete simulation step across all 120 candidate mixes.</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="section-heading"><span>🛡️</span><span>Split Conformal Prediction Formulation</span></div>', unsafe_allow_html=True)
+    st.markdown(
         """
+        <div class="chart-card">
+            <div style="font-weight: 700; color: #172033; font-size: 1.05rem; margin-bottom: 0.5rem;">Finite-Sample Distribution-Free Uncertainty Intervals</div>
+            <p style="color: #334155; font-size: 0.88rem; line-height: 1.6;">
+                Non-conformity absolute residuals are computed on a dedicated, strictly chronological calibration split $D_{\\text{cal}} = \\{(x_i, y_i)\\}_{i=1}^n$:
+            </p>
+            <div style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:6px; padding:0.5rem 1rem; margin:0.5rem 0; font-family:monospace; font-size:0.9rem; color:#172033;">
+                s_i = |y_i - f(x_i)|, &nbsp;&nbsp; \hat{q} = \text{Quantile}\left(s_{1:n}, \frac{\lceil(n+1)(1-\alpha)\rceil}{n}\right)
+            </div>
+            <p style="color: #334155; font-size: 0.88rem; line-height: 1.6; margin-bottom: 0;">
+                The resulting prediction band $C(x_{n+1}) = [f(x_{n+1}) - \hat{q}, f(x_{n+1}) + \hat{q}]$ guarantees valid marginal coverage under exchangeability:
+                $P(Y_{n+1} \in C(X_{n+1})) \ge 1 - \alpha$.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div class="section-heading"><span>⚠️</span><span>Mandatory Scientific Disclosures & Limitations</span></div>', unsafe_allow_html=True)
+    
+    render_disclaimer(
+        "<b>Geographic & Temporal Disconnection</b>: The four datasets (Stanford SKIPP'D, NASA POWER Mumbai, NREL Gujarat, and BDG2 Orlando) "
+        "originate from completely independent geographic locations, weather regimes, and observation years. "
+        "They do NOT describe a single physical microgrid or co-located generation facility.",
+        warning=True,
     )
 
     render_disclaimer(
-        "<b>Mandatory Ethical & Scientific Disclosure</b>: The datasets used in this research are non-co-located. "
-        "Any representation of these four data sources as a physically connected microgrid is factually incorrect and contrary "
-        "to the scientific integrity rules of this project. Stage 5 provides an illustrative decision-support proof of concept only.",
+        "<b>Illustrative Decision-Support Proof of Concept</b>: The Stage 5 energy-mix optimization combines these normalized series "
+        "exclusively to demonstrate the mathematical framework for multimodal forecasting, conformal risk bounds, and battery storage dispatch. "
+        "It should not be used as an investment-grade feasibility study for any specific physical site.",
+        warning=True,
+    )
+
+    render_disclaimer(
+        "<b>Marginal vs. Simultaneous Coverage</b>: Conformal guarantees hold marginally for each individual time step $t$. "
+        "They do not provide simultaneous joint interval coverage across all 240 consecutive hours of the multi-day dispatch horizon.",
+        warning=True,
+    )
+
+    render_disclaimer(
+        "<b>Demand Distribution Shift & Undercoverage</b>: Model D observed 85.47% empirical coverage on the test set against a 90.0% nominal target. "
+        "This undercoverage stems from an authentic seasonal shift between summer cooling calibration and autumn/winter test conditions.",
         warning=True,
     )

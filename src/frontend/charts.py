@@ -1,6 +1,7 @@
 """
 Interactive Plotly chart generators for the Streamlit decision-support dashboard.
-Redesigned to match the clean light-theme renewable energy analytics prototype.
+Redesigned with high-contrast, WCAG AA compliant light-theme tokens,
+clear axis units, sensible timestamp formatting, and readable legends.
 """
 from typing import Any, Dict, List, Optional
 import numpy as np
@@ -23,10 +24,11 @@ def create_energy_mix_donut_chart(
 ) -> go.Figure:
     """
     Create a clean, elegant Donut Chart matching the prototype's System Snapshot card.
+    Clearly distinguishes Solar, Wind, Battery Storage, and Grid Import with units.
     """
-    labels = ["Solar", "Wind", "Battery Storage", "Grid Import"]
+    labels = ["Solar PV", "Wind Turbine", "Battery Storage", "Grid Import"]
     values = [max(0.0, solar_val), max(0.0, wind_val), max(0.0, battery_val), max(0.0, grid_val)]
-    colors = ["#F59E0B", "#0284C7", "#8B5CF6", "#64748B"]
+    colors = ["#F59E0B", "#0369A1", "#7C3AED", "#64748B"]
 
     # Filter out near-zero categories
     filtered_labels = []
@@ -43,8 +45,6 @@ def create_energy_mix_donut_chart(
         filtered_values = [100.0]
         filtered_colors = ["#64748B"]
 
-    total_sum = sum(filtered_values)
-
     fig = go.Figure(
         data=[
             go.Pie(
@@ -54,8 +54,8 @@ def create_energy_mix_donut_chart(
                 marker=dict(colors=filtered_colors, line=dict(color="#FFFFFF", width=3)),
                 textinfo="percent",
                 hoverinfo="label+value+percent",
-                hovertemplate="<b>%{label}</b><br>Capacity/Energy: %{value:.1f}<br>Share: %{percent}<extra></extra>",
-                textfont=dict(size=12, color="#0F172A", family=FONT_FAMILY),
+                hovertemplate="<b>%{label}</b><br>Configured Capacity/Power: %{value:.1f} kW<br>Share: %{percent}<extra></extra>",
+                textfont=dict(size=12, color="#172033", family=FONT_FAMILY),
                 showlegend=True,
             )
         ]
@@ -63,17 +63,17 @@ def create_energy_mix_donut_chart(
 
     # Center annotation
     fig.add_annotation(
-        text=f"<b>{total_label}</b><br><span style='font-size:11px; color:#64748B;'>TOTAL</span>",
+        text=f"<b>{total_label}</b><br><span style='font-size:11px; color:#475569;'>TOTAL MIX</span>",
         x=0.5,
         y=0.5,
-        font=dict(size=16, color="#0F172A", family=FONT_FAMILY),
+        font=dict(size=16, color="#172033", family=FONT_FAMILY),
         showarrow=False,
     )
 
     fig.update_layout(
         title=dict(
-            text=f"<b>{title}</b><br><span style='font-size:12px; color:#64748B;'>{subtitle}</span>",
-            font=dict(size=15, color="#0F172A", family=FONT_FAMILY),
+            text=f"<b>{title}</b><br><span style='font-size:12px; color:#475569;'>{subtitle}</span>",
+            font=dict(size=15, color="#172033", family=FONT_FAMILY),
             x=0.02,
             y=0.96,
         ),
@@ -83,9 +83,12 @@ def create_energy_mix_donut_chart(
             y=0.5,
             xanchor="left",
             x=1.02,
-            font=dict(size=11, color="#334155", family=FONT_FAMILY),
+            font=dict(size=11, color="#172033", family=FONT_FAMILY),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
         ),
-        margin=dict(l=20, r=90, t=55, b=20),
+        margin=dict(l=20, r=100, t=55, b=20),
         template="plotly_white",
         height=320,
         paper_bgcolor="rgba(0,0,0,0)",
@@ -102,8 +105,8 @@ def create_overview_solar_pv_chart(
     subtitle: str = "SKIPP'D Test Set Nowcasting (EXP_SOLAR_DL_S3)",
 ) -> go.Figure:
     """
-    Create the high-contrast Forecast vs Actual line chart for the Overview page matching the prototype.
-    Actual line: Dark navy (#0F172A)
+    Create the high-contrast Forecast vs Actual line chart for the Overview page.
+    Actual line: Dark high-contrast slate/navy (#172033)
     Predicted line: Amber/Orange dashed (#F59E0B)
     """
     fig = go.Figure()
@@ -113,9 +116,9 @@ def create_overview_solar_pv_chart(
             x=timestamps,
             y=y_true,
             mode="lines",
-            name="Actual (kW)",
-            line=dict(color="#0F172A", width=2.2),
-            hovertemplate="Time: %{x}<br>Actual: <b>%{y:.2f} kW</b><extra></extra>",
+            name="Actual Observation (kW)",
+            line=dict(color="#172033", width=2.4),
+            hovertemplate="Time: %{x}<br>Actual PV: <b>%{y:.2f} kW</b><extra></extra>",
         )
     )
 
@@ -124,34 +127,38 @@ def create_overview_solar_pv_chart(
             x=timestamps,
             y=y_pred,
             mode="lines",
-            name="Predicted (kW)",
-            line=dict(color="#F59E0B", width=2.0, dash="dash"),
-            hovertemplate="Time: %{x}<br>Predicted: <b>%{y:.2f} kW</b><extra></extra>",
+            name="Predicted Nowcast (kW)",
+            line=dict(color="#F59E0B", width=2.2, dash="dash"),
+            hovertemplate="Time: %{x}<br>Predicted PV: <b>%{y:.2f} kW</b><extra></extra>",
         )
     )
 
     fig.update_layout(
         title=dict(
-            text=f"<b>{title}</b><br><span style='font-size:12px; color:#64748B;'>{subtitle}</span>",
-            font=dict(size=15, color="#0F172A", family=FONT_FAMILY),
+            text=f"<b>{title}</b><br><span style='font-size:12px; color:#475569;'>{subtitle}</span>",
+            font=dict(size=15, color="#172033", family=FONT_FAMILY),
             x=0.02,
             y=0.96,
         ),
         xaxis=dict(
-            title="Time",
+            title=dict(text="Time of Day (PST)", font=dict(size=11, color="#172033", family=FONT_FAMILY)),
             showgrid=True,
             gridcolor="#F1F5F9",
-            linecolor="#E2E8F0",
-            titlefont=dict(size=11, color="#64748B", family=FONT_FAMILY),
-            tickfont=dict(size=10, color="#64748B", family=FONT_FAMILY),
+            linecolor="#CBD5E1",
+            tickfont=dict(size=10, color="#475569", family=FONT_FAMILY),
+            nticks=12,
+            exponentformat="none",
+            showexponent="none",
         ),
         yaxis=dict(
-            title="PV Output (kW)",
+            title=dict(text="PV Output Power (kW)", font=dict(size=11, color="#172033", family=FONT_FAMILY)),
             showgrid=True,
             gridcolor="#F1F5F9",
-            linecolor="#E2E8F0",
-            titlefont=dict(size=11, color="#64748B", family=FONT_FAMILY),
-            tickfont=dict(size=10, color="#64748B", family=FONT_FAMILY),
+            linecolor="#CBD5E1",
+            tickfont=dict(size=10, color="#475569", family=FONT_FAMILY),
+            rangemode="tozero",
+            exponentformat="none",
+            showexponent="none",
         ),
         legend=dict(
             orientation="h",
@@ -159,9 +166,12 @@ def create_overview_solar_pv_chart(
             y=1.02,
             xanchor="right",
             x=1.0,
-            font=dict(size=11, color="#334155", family=FONT_FAMILY),
+            font=dict(size=11, color="#172033", family=FONT_FAMILY),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
         ),
-        margin=dict(l=40, r=20, t=60, b=40),
+        margin=dict(l=45, r=25, t=65, b=45),
         template="plotly_white",
         hovermode="x unified",
         height=320,
@@ -182,26 +192,26 @@ def create_mini_forecast_chart(
     theme: str = "green",
 ) -> go.Figure:
     """
-    Create a compact preview forecast chart with uncertainty band for the Overview page (input_file_1.png).
+    Create a compact preview forecast chart with uncertainty band for the Overview page.
     theme: 'green' for Wind, 'purple' for Demand, 'blue' for Solar
     """
     fig = go.Figure()
 
     theme_colors = {
         "green": {
-            "forecast": "#10B981",
-            "band": "rgba(16, 185, 129, 0.18)",
-            "border": "#059669",
+            "forecast": "#047857",
+            "band": "rgba(4, 120, 87, 0.18)",
+            "border": "#065F46",
         },
         "purple": {
-            "forecast": "#8B5CF6",
-            "band": "rgba(139, 92, 246, 0.18)",
-            "border": "#7C3AED",
+            "forecast": "#7C3AED",
+            "band": "rgba(124, 58, 237, 0.18)",
+            "border": "#6D28D9",
         },
         "blue": {
-            "forecast": "#0284C7",
-            "band": "rgba(2, 132, 199, 0.18)",
-            "border": "#0369A1",
+            "forecast": "#0369A1",
+            "band": "rgba(3, 105, 161, 0.18)",
+            "border": "#075985",
         },
     }
     tc = theme_colors.get(theme, theme_colors["green"])
@@ -227,8 +237,8 @@ def create_mini_forecast_chart(
             x=timestamps,
             y=y_true,
             mode="lines",
-            name="Actual",
-            line=dict(color="#0F172A", width=1.8),
+            name="Actual Observation",
+            line=dict(color="#172033", width=2.0),
             hovertemplate=f"Actual: <b>%{{y:.2f}} {unit}</b><extra></extra>",
         )
     )
@@ -239,8 +249,8 @@ def create_mini_forecast_chart(
             x=timestamps,
             y=y_pred,
             mode="lines",
-            name="Forecast (Mean)",
-            line=dict(color=tc["forecast"], width=1.8, dash="dash"),
+            name="Model Forecast",
+            line=dict(color=tc["forecast"], width=2.0, dash="dash"),
             hovertemplate=f"Forecast: <b>%{{y:.2f}} {unit}</b><extra></extra>",
         )
     )
@@ -248,21 +258,28 @@ def create_mini_forecast_chart(
     fig.update_layout(
         title=dict(
             text=f"<b>{title}</b>",
-            font=dict(size=14, color="#0F172A", family=FONT_FAMILY),
+            font=dict(size=14, color="#172033", family=FONT_FAMILY),
             x=0.02,
             y=0.96,
         ),
         xaxis=dict(
+            title=dict(text="Continuous Timeline (Hours)", font=dict(size=10, color="#172033", family=FONT_FAMILY)),
             showgrid=True,
             gridcolor="#F1F5F9",
-            tickfont=dict(size=9, color="#64748B", family=FONT_FAMILY),
+            linecolor="#CBD5E1",
+            tickfont=dict(size=9, color="#475569", family=FONT_FAMILY),
+            nticks=8,
+            exponentformat="none",
+            showexponent="none",
         ),
         yaxis=dict(
-            title=unit,
+            title=dict(text=f"Value ({unit})", font=dict(size=10, color="#172033", family=FONT_FAMILY)),
             showgrid=True,
             gridcolor="#F1F5F9",
-            titlefont=dict(size=10, color="#64748B", family=FONT_FAMILY),
-            tickfont=dict(size=9, color="#64748B", family=FONT_FAMILY),
+            linecolor="#CBD5E1",
+            tickfont=dict(size=9, color="#475569", family=FONT_FAMILY),
+            exponentformat="none",
+            showexponent="none",
         ),
         legend=dict(
             orientation="h",
@@ -270,12 +287,15 @@ def create_mini_forecast_chart(
             y=1.02,
             xanchor="right",
             x=1.0,
-            font=dict(size=10, color="#334155", family=FONT_FAMILY),
+            font=dict(size=10, color="#172033", family=FONT_FAMILY),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
         ),
-        margin=dict(l=35, r=15, t=50, b=30),
+        margin=dict(l=40, r=20, t=55, b=35),
         template="plotly_white",
         hovermode="x unified",
-        height=260,
+        height=265,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
     )
@@ -290,9 +310,12 @@ def create_actual_vs_predicted_chart(
     unit: str = "",
     y_low: Optional[np.ndarray] = None,
     y_upp: Optional[np.ndarray] = None,
-    nominal_label: str = "90% Conformal Interval",
+    nominal_label: str = "90% Conformal Prediction Interval",
 ) -> go.Figure:
-    """Create an interactive Actual vs Predicted line chart with clean light styling."""
+    """
+    Create an interactive Actual vs Predicted line chart with clean light styling.
+    Ensures high contrast between actual observations, deep learning forecasts, and uncertainty intervals.
+    """
     fig = go.Figure()
 
     # Optional Uncertainty Envelope
@@ -302,7 +325,7 @@ def create_actual_vs_predicted_chart(
                 x=list(timestamps) + list(timestamps)[::-1],
                 y=list(y_upp) + list(y_low)[::-1],
                 fill="toself",
-                fillcolor="rgba(16, 185, 129, 0.16)",
+                fillcolor="rgba(4, 120, 87, 0.16)",
                 line=dict(color="rgba(255,255,255,0)"),
                 hoverinfo="skip",
                 showlegend=True,
@@ -316,8 +339,8 @@ def create_actual_vs_predicted_chart(
             x=timestamps,
             y=y_true,
             mode="lines",
-            name="Actual Observation",
-            line=dict(color="#0F172A", width=2.2),
+            name=f"Actual Observation ({unit})",
+            line=dict(color="#172033", width=2.4),
             hovertemplate="Time: %{x}<br>Actual: <b>%{y:.2f} " + unit + "</b><extra></extra>",
         )
     )
@@ -328,29 +351,32 @@ def create_actual_vs_predicted_chart(
             x=timestamps,
             y=y_pred,
             mode="lines",
-            name="Forecast (Deep Learning)",
-            line=dict(color="#0284C7", width=2.2, dash="solid"),
+            name=f"Forecast (Deep Learning) ({unit})",
+            line=dict(color="#0369A1", width=2.2, dash="solid"),
             hovertemplate="Time: %{x}<br>Forecast: <b>%{y:.2f} " + unit + "</b><extra></extra>",
         )
     )
 
     fig.update_layout(
-        title=dict(text=f"<b>{title}</b>", font=dict(size=16, color="#0F172A", family=FONT_FAMILY)),
+        title=dict(text=f"<b>{title}</b>", font=dict(size=16, color="#172033", family=FONT_FAMILY)),
         xaxis=dict(
-            title="Timestamp",
+            title=dict(text="Continuous Timeline (Date / Hour)", font=dict(size=11, color="#172033", family=FONT_FAMILY)),
             showgrid=True,
             gridcolor="#F1F5F9",
-            linecolor="#E2E8F0",
-            titlefont=dict(size=11, color="#64748B", family=FONT_FAMILY),
-            tickfont=dict(size=10, color="#64748B", family=FONT_FAMILY),
+            linecolor="#CBD5E1",
+            tickfont=dict(size=10, color="#475569", family=FONT_FAMILY),
+            nticks=10,
+            exponentformat="none",
+            showexponent="none",
         ),
         yaxis=dict(
-            title=f"Value ({unit})",
+            title=dict(text=f"Physical Quantity ({unit})", font=dict(size=11, color="#172033", family=FONT_FAMILY)),
             showgrid=True,
             gridcolor="#F1F5F9",
-            linecolor="#E2E8F0",
-            titlefont=dict(size=11, color="#64748B", family=FONT_FAMILY),
-            tickfont=dict(size=10, color="#64748B", family=FONT_FAMILY),
+            linecolor="#CBD5E1",
+            tickfont=dict(size=10, color="#475569", family=FONT_FAMILY),
+            exponentformat="none",
+            showexponent="none",
         ),
         legend=dict(
             orientation="h",
@@ -358,9 +384,12 @@ def create_actual_vs_predicted_chart(
             y=1.02,
             xanchor="right",
             x=1.0,
-            font=dict(size=11, color="#334155", family=FONT_FAMILY),
+            font=dict(size=11, color="#172033", family=FONT_FAMILY),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
         ),
-        margin=dict(l=40, r=30, t=65, b=40),
+        margin=dict(l=45, r=30, t=65, b=45),
         template="plotly_white",
         hovermode="x unified",
         paper_bgcolor="rgba(0,0,0,0)",
@@ -379,7 +408,10 @@ def create_dispatch_dashboard_chart(
     battery_soc: Optional[np.ndarray] = None,
     title: str = "Hourly Energy Dispatch & Supply Mix",
 ) -> go.Figure:
-    """Create stacked dispatch area chart showing how demand is served hour by hour."""
+    """
+    Create stacked dispatch area chart showing how demand is served hour by hour.
+    Individual energy carriers are clearly distinguishable with distinct high-contrast colors.
+    """
     fig = make_subplots(
         rows=2,
         cols=1,
@@ -395,10 +427,10 @@ def create_dispatch_dashboard_chart(
             x=timestamps,
             y=renewable_used,
             mode="lines",
-            name="Renewable Direct Used",
+            name="Direct Renewable Used",
             stackgroup="supply",
-            line=dict(color="#10B981", width=0.5),
-            fillcolor="rgba(16, 185, 129, 0.75)",
+            line=dict(color="#047857", width=0.5),
+            fillcolor="rgba(4, 120, 87, 0.75)",
             hovertemplate="Renewable Used: %{y:.2f} kWh<extra></extra>",
         ),
         row=1,
@@ -412,8 +444,8 @@ def create_dispatch_dashboard_chart(
             mode="lines",
             name="Battery Discharge",
             stackgroup="supply",
-            line=dict(color="#8B5CF6", width=0.5),
-            fillcolor="rgba(139, 92, 246, 0.75)",
+            line=dict(color="#7C3AED", width=0.5),
+            fillcolor="rgba(124, 58, 237, 0.75)",
             hovertemplate="Battery Discharge: %{y:.2f} kWh<extra></extra>",
         ),
         row=1,
@@ -440,8 +472,8 @@ def create_dispatch_dashboard_chart(
             x=timestamps,
             y=demand,
             mode="lines",
-            name="Total Demand",
-            line=dict(color="#0F172A", width=2.5, dash="dash"),
+            name="Total Demand Target",
+            line=dict(color="#172033", width=2.6, dash="dash"),
             hovertemplate="Total Demand: %{y:.2f} kWh<extra></extra>",
         ),
         row=1,
@@ -454,7 +486,7 @@ def create_dispatch_dashboard_chart(
             x=timestamps,
             y=curtailment,
             name="Curtailed Renewable",
-            marker=dict(color="rgba(239, 68, 68, 0.75)"),
+            marker=dict(color="rgba(239, 68, 68, 0.80)"),
             hovertemplate="Curtailment: %{y:.2f} kWh<extra></extra>",
         ),
         row=2,
@@ -468,7 +500,7 @@ def create_dispatch_dashboard_chart(
                 y=battery_soc,
                 mode="lines",
                 name="Battery Stored Energy (kWh)",
-                line=dict(color="#0284C7", width=2),
+                line=dict(color="#0369A1", width=2.2),
                 hovertemplate="Battery SOC: %{y:.2f} kWh<extra></extra>",
             ),
             row=2,
@@ -476,18 +508,28 @@ def create_dispatch_dashboard_chart(
         )
 
     fig.update_layout(
-        title=dict(text=f"<b>{title}</b>", font=dict(size=16, color="#0F172A", family=FONT_FAMILY)),
-        legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="right", x=1, font=dict(family=FONT_FAMILY)),
-        margin=dict(l=40, r=30, t=70, b=40),
+        title=dict(text=f"<b>{title}</b>", font=dict(size=16, color="#172033", family=FONT_FAMILY)),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="right",
+            x=1,
+            font=dict(family=FONT_FAMILY, size=11, color="#172033"),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
+        ),
+        margin=dict(l=45, r=30, t=70, b=45),
         template="plotly_white",
         hovermode="x unified",
         height=620,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
     )
-    fig.update_yaxes(title_text="Energy (kWh)", showgrid=True, gridcolor="#F1F5F9", row=1, col=1)
-    fig.update_yaxes(title_text="Energy (kWh)", showgrid=True, gridcolor="#F1F5F9", row=2, col=1)
-    fig.update_xaxes(title_text="Timestamp", showgrid=True, gridcolor="#F1F5F9", row=2, col=1)
+    fig.update_yaxes(title_text="Energy (kWh)", title_font=dict(color="#172033"), showgrid=True, gridcolor="#F1F5F9", linecolor="#CBD5E1", tickfont=dict(color="#475569"), row=1, col=1)
+    fig.update_yaxes(title_text="Energy (kWh)", title_font=dict(color="#172033"), showgrid=True, gridcolor="#F1F5F9", linecolor="#CBD5E1", tickfont=dict(color="#475569"), row=2, col=1)
+    fig.update_xaxes(title_text="Hourly Simulation Timeline", title_font=dict(color="#172033"), showgrid=True, gridcolor="#F1F5F9", linecolor="#CBD5E1", tickfont=dict(color="#475569"), nticks=10, row=2, col=1)
 
     return fig
 
@@ -507,17 +549,27 @@ def create_scenario_comparison_bar_chart(scenario_records: List[Dict[str, Any]])
     fig = go.Figure()
 
     fig.add_trace(go.Bar(name="Total Demand (kWh)", x=scenarios, y=demand_vals, marker_color="#334155"))
-    fig.add_trace(go.Bar(name="Available Renewable (kWh)", x=scenarios, y=renewable_vals, marker_color="#10B981"))
+    fig.add_trace(go.Bar(name="Available Renewable (kWh)", x=scenarios, y=renewable_vals, marker_color="#047857"))
     fig.add_trace(go.Bar(name="Grid Import (kWh)", x=scenarios, y=grid_vals, marker_color="#F59E0B"))
     fig.add_trace(go.Bar(name="Curtailment (kWh)", x=scenarios, y=curtail_vals, marker_color="#EF4444"))
 
     fig.update_layout(
         barmode="group",
-        title=dict(text="<b>Energy Quantities Across Conformal Uncertainty Scenarios</b>", font=dict(size=16, color="#0F172A", family=FONT_FAMILY)),
-        xaxis=dict(title="Scenario", linecolor="#E2E8F0"),
-        yaxis=dict(title="Total Energy (kWh)", showgrid=True, gridcolor="#F1F5F9", linecolor="#E2E8F0"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(family=FONT_FAMILY)),
-        margin=dict(l=40, r=30, t=60, b=40),
+        title=dict(text="<b>Energy Quantities Across Conformal Uncertainty Scenarios</b>", font=dict(size=16, color="#172033", family=FONT_FAMILY)),
+        xaxis=dict(title="Uncertainty Scenario", linecolor="#CBD5E1", tickfont=dict(size=11, color="#172033", family=FONT_FAMILY)),
+        yaxis=dict(title="Total Energy (kWh)", showgrid=True, gridcolor="#F1F5F9", linecolor="#CBD5E1", tickfont=dict(size=10, color="#475569", family=FONT_FAMILY)),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(family=FONT_FAMILY, size=11, color="#172033"),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
+        ),
+        margin=dict(l=45, r=30, t=65, b=45),
         template="plotly_white",
         height=420,
         paper_bgcolor="rgba(0,0,0,0)",
@@ -544,7 +596,10 @@ def create_tradeoff_pareto_chart(candidates_df: pd.DataFrame) -> go.Figure:
                 size=candidates_df["battery_kwh"] / 15 + 8,
                 color=candidates_df["grid_import_kwh"],
                 colorscale="Viridis",
-                colorbar=dict(title="Grid Import (kWh)"),
+                colorbar=dict(
+                    title=dict(text="Grid Import (kWh)", font=dict(color="#172033", size=11)),
+                    tickfont=dict(color="#475569"),
+                ),
                 showscale=True,
                 opacity=0.75,
                 line=dict(color="#1E293B", width=0.5),
@@ -587,16 +642,38 @@ def create_tradeoff_pareto_chart(candidates_df: pd.DataFrame) -> go.Figure:
             name="Cost-Optimal Mix",
             text=["Cost-Optimal"],
             textposition="top left",
-            marker=dict(symbol="star", size=16, color="#10B981", line=dict(color="#064E3B", width=2)),
+            marker=dict(symbol="star", size=16, color="#047857", line=dict(color="#064E3B", width=2)),
         )
     )
 
     fig.update_layout(
-        title=dict(text="<b>Candidate Renewable Energy Mixes: Cost vs Autonomy Trade-Off</b>", font=dict(size=16, color="#0F172A", family=FONT_FAMILY)),
-        xaxis=dict(title="Renewable Penetration (% of Total Demand)", showgrid=True, gridcolor="#F1F5F9", linecolor="#E2E8F0"),
-        yaxis=dict(title="Total Horizon Amortized Cost ($)", showgrid=True, gridcolor="#F1F5F9", linecolor="#E2E8F0"),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(family=FONT_FAMILY)),
-        margin=dict(l=40, r=30, t=60, b=40),
+        title=dict(text="<b>Candidate Renewable Energy Mixes: Cost vs Autonomy Trade-Off</b>", font=dict(size=16, color="#172033", family=FONT_FAMILY)),
+        xaxis=dict(
+            title=dict(text="Renewable Penetration (% of Total Demand)", font=dict(size=11, color="#172033")),
+            showgrid=True,
+            gridcolor="#F1F5F9",
+            linecolor="#CBD5E1",
+            tickfont=dict(size=10, color="#475569"),
+        ),
+        yaxis=dict(
+            title=dict(text="Total Horizon Amortized Cost ($)", font=dict(size=11, color="#172033")),
+            showgrid=True,
+            gridcolor="#F1F5F9",
+            linecolor="#CBD5E1",
+            tickfont=dict(size=10, color="#475569"),
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            font=dict(family=FONT_FAMILY, size=11, color="#172033"),
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
+        ),
+        margin=dict(l=45, r=30, t=65, b=45),
         template="plotly_white",
         height=480,
         paper_bgcolor="rgba(0,0,0,0)",

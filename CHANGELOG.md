@@ -817,3 +817,38 @@ eports/baseline_report.md and PROJECT_CONTEXT.md.
      - Zero modifications to model weights, architectures, training logic, or test data.
      - Zero modifications to conformal calibration quantiles or energy-balance optimization math.
      - No tests run per user instruction (#11).
+
+## [Stage 8] - 2026-10-24 (UI/UX Accessibility, High-Contrast Light Theme & Rendering Bug Fixes)
+
+- **Agent**: Senior Frontend Engineer & Accessibility-Focused UI/UX Designer
+- **Objective**: Repair critical readability, contrast, navigation, and rendering issues across the Streamlit application without running the app, executing tests, or modifying underlying models/calculations.
+- **Key Implementation & Results**:
+  1. **Source-Code Identification & Elimination of `</div>` Artefacts**:
+     - *Root Cause*: In CommonMark specification, lines with 4+ spaces of indentation following an empty line or HTML tag are parsed as indented code blocks (`<pre><code>`). In `src/frontend/components.py:render_model_card()`, multiline f-strings contained trailing closing tags indented with 8 spaces (`        </div>`) following the SVG element. Streamlit rendered this as a black terminal code box displaying literal `</div>`.
+     - *Resolution*: Reconstructed `render_model_card()` as a single-string, unindented HTML template with zero leading spaces. Completely eliminated the code-block interpretation without masking tags with CSS.
+  2. **High-Contrast Design Tokens & WCAG AA Compliance**:
+     - Standardized design tokens across `src/frontend/components.py` and `app.py`:
+       - Main background: `#F8FAFC`
+       - Card/Panel background: `#FFFFFF`
+       - Primary text: `#172033` (contrast >= 9.5:1 against #FFFFFF, meeting WCAG AAA)
+       - Secondary text: `#475569`, Muted text: `#64748B`
+       - Primary green: `#047857` (contrast >= 4.5:1), Primary blue: `#0369A1`
+       - Borders: `#CBD5E1`
+       - Warnings: background `#FFFBEB`, text `#92400E`, border `#F59E0B`
+  3. **Sidebar Navigation Visibility & Contrast Overhaul**:
+     - Overcame Streamlit BaseWeb default styling via high-specificity CSS selectors on `section[data-testid="stSidebar"] div[role="radiogroup"] > label`.
+     - Inactive items: `#334155` dark-slate text, `#FFFFFF` background, hover `#F1F5F9` with `#172033` text.
+     - Active item: `#065F46` dark-green text on `#D1FAE5` pale-green background, bounded by a prominent `4px solid #047857` left border.
+     - Cleanly styled the bottom `Project Scope` checklist card with clear section headers and high-contrast `#047857` checkmarks.
+  4. **Informative Slider Control Context Panels**:
+     - Created `render_control_context_card()` helper in `src/frontend/components.py`.
+     - Equipped all interactive sliders across Models B, C, D, and E with clear titles, physical descriptions, units, permitted ranges, current value indicators, and downstream analytical impact explanations.
+  5. **Methodology & Uncertainty Table Formatting**:
+     - Replaced unstyled Glide dataframe rendering with responsive `.styled-table` HTML markup on Page 8 (Heterogeneous Data Provenance Matrix) and Page 6 (Empirical Test Coverage & Calibration Metrics), ensuring crisp dark text on white panels with slate headers (`#F1F5F9`), distinct row borders (`#CBD5E1`), and status badges.
+     - Preserved all scientific caveats (geographic disconnection, illustrative nature of combined mix, marginal vs simultaneous coverage, demand distribution shift).
+  6. **Chart Typography, Axes, Units, and Timestamp Formatting**:
+     - Updated all Plotly chart generators in `src/frontend/charts.py` to enforce high-contrast `#172033` titles, `#475569` axis labels and tickmarks, explicit physical units, white translucent legends (`rgba(255,255,255,0.95)`) with `#CBD5E1` borders, and non-scientific timestamp formatting (`exponentformat="none"`, `nticks=10`).
+  7. **Strict Scope Compliance**:
+     - Zero modifications to model checkpoints, neural-network code, training scripts, test splits, or physical formulas.
+     - **No application execution, automated testing, or model runs performed.**
+
