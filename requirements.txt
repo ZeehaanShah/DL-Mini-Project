@@ -1,0 +1,30 @@
+# DL MiniProject Dependencies
+# Generated 2026-10-20 from verified environment audit
+# Python 3.11.9, CPU-only PyTorch
+
+# Core ML
+torch==2.11.0
+torchvision==0.29.1
+scikit-learn==1.5.1
+
+# Data handling
+pandas==2.2.2
+numpy==2.4.6
+pyarrow==17.0.0
+
+# Visualization & Frontend
+matplotlib==3.9.2
+Pillow==10.4.0
+streamlit>=1.37.0
+plotly>=5.23.0
+
+# Utilities
+scipy==1.17.1
+tqdm==4.67.3
+PyYAML==6.0.2
+
+# Testing
+pytest>=7.0
+
+# Note: torch and torchvision are CPU-only builds.
+# For GPU support, install from https://pytorch.org with the appropriate CUDA version.

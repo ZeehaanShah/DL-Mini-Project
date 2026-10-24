@@ -1,0 +1,55 @@
+# Configuration for Stage 5: Uncertainty-Aware Energy Feasibility and Mix Optimization (Model E)
+module: "decision_support"
+framework_title: "A Multimodal, Uncertainty-Aware Decision-Support Framework for Location-Specific Renewable Energy Feasibility and Energy-Mix Optimization"
+
+# Time resolution and unit conventions
+simulation:
+  time_step_hours: 1.0
+  energy_unit: "kWh"
+  power_unit: "kW"
+  default_duration_hours: 240  # 10-day representative window for detailed dispatch visualization
+
+# Physical grid connection constraints
+grid:
+  default_import_limit_kw: 100.0   # Maximum continuous grid import power in kW (equivalent to 100 kWh/h)
+  unrestricted_import_limit_kw: 1000.0  # Infinite/unrestricted grid proxy
+
+# Illustrative engineering cost parameters (Clearly documented as illustrative benchmarks, not commercial quotes)
+costs:
+  solar_capex_per_kw: 800.0     # Illustrative annualized/installed capital proxy ($/kW)
+  wind_capex_per_kw: 1200.0     # Illustrative annualized/installed capital proxy ($/kW)
+  battery_capex_per_kwh: 250.0  # Illustrative battery storage capital proxy ($/kWh)
+  grid_energy_rate: 0.12        # Illustrative grid electricity tariff ($/kWh)
+  unmet_demand_penalty: 2.00    # Value of Lost Load (VoLL) penalty ($/kWh of unmet demand)
+  curtailment_penalty: 0.01     # Minor penalty to disfavor excessive over-generation ($/kWh)
+
+# Illustrative physical solar conversion model (NASA POWER irradiance Wh/m² to electrical kWh)
+solar_conversion:
+  standard_test_irradiance: 1000.0  # W/m² (STC reference irradiance)
+  performance_ratio: 0.78           # Typical system derate (inverter, cabling, soiling, temp losses)
+  reference_capacity_kw: 50.0       # Base PV array nameplate capacity for scaling
+
+# Battery Energy Storage System (BESS) physical parameters
+battery:
+  initial_soc_ratio: 0.50       # Initial state of charge (50% of nominal capacity)
+  min_soc_ratio: 0.10           # Minimum allowable reserve depth of discharge (10%)
+  max_soc_ratio: 0.95           # Maximum allowable charging ceiling (95%)
+  charge_efficiency: 0.92       # Round-trip sqrt: 92% charging efficiency
+  discharge_efficiency: 0.92    # Round-trip sqrt: 92% discharging efficiency (0.92 * 0.92 ≈ 85% round-trip)
+  max_c_rate_charge: 0.50       # Max charge rate (0.5C: 2h full charge)
+  max_c_rate_discharge: 0.50    # Max discharge rate (0.5C: 2h full discharge)
+
+# Optimization search grid for mix exploration
+optimization_grid:
+  solar_capacities_kw: [0.0, 25.0, 50.0, 75.0, 100.0, 150.0]
+  wind_capacities_kw: [0.0, 50.0, 100.0, 200.0, 300.0]
+  battery_capacities_kwh: [0.0, 50.0, 100.0, 200.0]
+  unmet_demand_tolerance: 0.01  # Maximum 1% unmet demand allowed for grid-minimization objective
+
+# Conformal uncertainty evaluation parameters
+uncertainty:
+  nominal_confidence_levels: [0.80, 0.90]
+  wind_quantile_80: 1.0439      # Calibration nonconformity score from Stage 4 (m/s)
+  wind_quantile_90: 1.5316      # Calibration nonconformity score from Stage 4 (m/s)
+  demand_quantile_80: 2.4781    # Calibration nonconformity score from Stage 4 (kWh)
+  demand_quantile_90: 4.7627    # Calibration nonconformity score from Stage 4 (kWh)

@@ -1,0 +1,19 @@
+experiment_id: EXP_WIND_DL_C4
+model_name: WindLSTM
+dataset: NREL_WIND_TOOLKIT
+task: wind_speed_forecasting
+sequence_length: 24
+forecast_horizon: 1
+input_dim: 4
+hidden_dim: 64
+num_layers: 2
+dropout: 0.2
+learning_rate: 0.0005
+batch_size: 32
+max_epochs: 15
+early_stopping_patience: 4
+random_seed: 42
+loss: mse
+metric_unit: m/s
+features_used: ["wind_speed", "wind_direction", "temperature", "pressure"]
+description: "C4: WindLSTM deep multivariate (4 features), hidden=64, num_layers=2, lr=0.0005, dropout=0.2"

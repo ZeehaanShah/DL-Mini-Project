@@ -1,0 +1,56 @@
+# Configuration for Model D: BDG2 Building Electricity Demand Forecasting
+dataset_name: "building_data_genome_project_2"
+task: "one_hour_ahead_demand_forecasting"
+description: "Sliding-window sequence forecasting of building hourly electricity consumption"
+status: "ACQUIRED_AND_VALIDATED"  # Raw data acquired, causally cleaned, and validated (17,544 rows)
+
+paths:
+  raw_dir: "data/raw/bdg2/"
+  meter_file: "data/raw/bdg2/bdg2_Panther_education_Rosalie_raw.csv"
+  metadata_file: "data/raw/bdg2/metadata_Panther_education_Rosalie.csv"
+  processed_dir: "data/processed/demand/"
+  pilot_file: "data/processed/demand/demand_hourly_pilot.csv"
+
+meter:
+  building_id: "Panther_education_Rosalie"
+  site_id: "Panther"
+  primary_space_usage: "Education"
+  sub_primary_space_usage: "Research"
+  floor_area_sqm: 690.5
+  year_built: 2008
+  timezone: "America/New_York"  # Local Standard Time (EST / UTC-5)
+
+target:
+  column: "demand_kwh"
+  unit: "kWh"
+  equivalent_power_unit: "kW"  # Over 1-hour interval: 1 kWh == 1 kW average power
+  min_val: 0.0
+  max_val: 1000.0
+
+windowing:
+  sequence_length: 24   # Past 24 hours of inputs
+  forecast_horizon: 1    # Predict t+1 hour ahead
+  step_size: 1
+  extended_weekly_length: 168  # 7-day window for weekly seasonal persistence
+
+features:
+  columns:
+    - "demand_kwh"
+
+preprocessing:
+  scaling: "standard_scaler"
+  fit_partition: "train_only"  # Strict zero-leakage policy
+
+split:
+  policy: "chronological"
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  embargo_hours: 24  # 24-hour purge between split boundaries to prevent overlap
+  random_state: 42
+
+dataloader:
+  batch_size: 32
+  num_workers: 0  # Windows-safe
+  shuffle_train: true
+  pin_memory: false

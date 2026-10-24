@@ -1,0 +1,19 @@
+experiment_id: EXP_WIND_DL_C2
+model_name: WindLSTM
+dataset: NREL_WIND_TOOLKIT
+task: wind_speed_forecasting
+sequence_length: 24
+forecast_horizon: 1
+input_dim: 1
+hidden_dim: 64
+num_layers: 1
+dropout: 0.1
+learning_rate: 0.001
+batch_size: 32
+max_epochs: 15
+early_stopping_patience: 4
+random_seed: 42
+loss: mse
+metric_unit: m/s
+features_used: ["wind_speed"]
+description: "C2: WindLSTM univariate wider, hidden=64, num_layers=1, lr=0.001, dropout=0.1"

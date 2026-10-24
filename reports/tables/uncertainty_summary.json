@@ -1,0 +1,94 @@
+{
+  "wind": {
+    "model_id": "EXP_WIND_DL_C2",
+    "cal_samples": 1290,
+    "test_samples": 1242,
+    "calibration_period": [
+      "2014-09-15 12:30:00",
+      "2014-11-08 05:30:00"
+    ],
+    "test_period": [
+      "2014-11-10 06:30:00",
+      "2014-12-31 23:30:00"
+    ],
+    "q_80_ms": 1.0439250469207764,
+    "q_90_ms": 1.5316424369812012,
+    "eval_80": {
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.8422,
+      "mpiw_ms": 2.0877,
+      "raw_mpiw_ms": 2.0879,
+      "width_reduction_ms": 0.0002,
+      "winkler_score": 3.0501,
+      "undercoverage_rate": 0.0805,
+      "overcoverage_rate": 0.0773
+    },
+    "eval_90": {
+      "nominal_coverage": 0.9,
+      "empirical_coverage": 0.9283,
+      "mpiw_ms": 3.0602,
+      "raw_mpiw_ms": 3.0633,
+      "width_reduction_ms": 0.0031,
+      "winkler_score": 3.9157,
+      "undercoverage_rate": 0.0346,
+      "overcoverage_rate": 0.037
+    },
+    "power_proxy": {
+      "power_80": {
+        "coverage": 0.872,
+        "nominal_coverage": 0.8,
+        "coverage_gap": 0.072,
+        "mpiw": 181.1448,
+        "winkler_score": 257.2973,
+        "undercoverage_rate": 0.0507,
+        "overcoverage_rate": 0.0773,
+        "n_samples": 1242
+      },
+      "power_90": {
+        "coverage": 0.9436,
+        "nominal_coverage": 0.9,
+        "coverage_gap": 0.0436,
+        "mpiw": 270.2295,
+        "winkler_score": 342.517,
+        "undercoverage_rate": 0.0193,
+        "overcoverage_rate": 0.037,
+        "n_samples": 1242
+      }
+    }
+  },
+  "demand": {
+    "model_id": "EXP_DEMAND_DL_D2",
+    "cal_samples": 2607,
+    "test_samples": 2561,
+    "calibration_period": [
+      "2017-05-28 16:00:00",
+      "2017-09-14 06:00:00"
+    ],
+    "test_period": [
+      "2017-09-16 07:00:00",
+      "2017-12-31 23:00:00"
+    ],
+    "q_80_kwh": 2.478057861328125,
+    "q_90_kwh": 4.7627105712890625,
+    "eval_80": {
+      "nominal_coverage": 0.8,
+      "empirical_coverage": 0.6603,
+      "mpiw_kwh": 4.9561,
+      "raw_mpiw_kwh": 4.9561,
+      "width_reduction_kwh": 0.0,
+      "winkler_score": 15.4839,
+      "undercoverage_rate": 0.1702,
+      "overcoverage_rate": 0.1695
+    },
+    "eval_90": {
+      "nominal_coverage": 0.9,
+      "empirical_coverage": 0.8547,
+      "mpiw_kwh": 9.5254,
+      "raw_mpiw_kwh": 9.5254,
+      "width_reduction_kwh": 0.0,
+      "winkler_score": 20.6045,
+      "undercoverage_rate": 0.0726,
+      "overcoverage_rate": 0.0726
+    }
+  }
+}

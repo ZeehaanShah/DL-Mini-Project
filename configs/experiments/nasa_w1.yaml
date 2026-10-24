@@ -1,0 +1,18 @@
+experiment_id: EXP_NASA_DL_W1
+model_name: WeatherLSTM
+dataset: NASA_POWER
+task: irradiance_forecasting
+sequence_length: 24
+forecast_horizon: 1
+input_dim: 4
+hidden_dim: 32
+num_layers: 1
+dropout: 0.0
+learning_rate: 0.001
+batch_size: 32
+max_epochs: 15
+early_stopping_patience: 4
+random_seed: 42
+loss: mse
+metric_unit: Wh/m^2
+description: "W1: WeatherLSTM hidden=32, num_layers=1, lr=0.001, dropout=0.0"

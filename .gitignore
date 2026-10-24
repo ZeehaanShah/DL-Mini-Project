@@ -1,0 +1,63 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Secrets
+.env
+.env.local
+*.key
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Data (large files — keep raw data out of git)
+data/raw/skippd/*.parquet
+data/raw/skippd/*.npy
+data/raw/nasa_power/*.csv
+data/raw/wind/*
+data/raw/bdg2/*
+data/interim/*
+data/processed/*
+
+# Checkpoints and model artifacts
+checkpoints/*.pt
+checkpoints/*.pth
+checkpoints/*.ckpt
+*.pt
+*.pth
+*.ckpt
+
+# Experiment outputs (keep registry but not large artifacts)
+experiments/*/outputs/
+experiments/*/logs/
+
+# Reports figures (generated, can be large)
+reports/figures/*.png
+reports/figures/*.pdf
+
+# Temporary
+*.tmp
+*.bak
+scratch/

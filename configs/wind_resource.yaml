@@ -1,0 +1,66 @@
+# Configuration for Model C: Wind Resource Forecasting & Turbine Power Estimation
+dataset_name: "nrel_wind_toolkit"
+task: "one_hour_ahead_wind_forecasting"
+description: "Sliding-window sequence forecasting of hub-height wind speed with turbine power curve estimation"
+status: "PILOT_DATA_ACQUIRED_AND_VALIDATED"  # NREL 2014 pilot downloaded and validated
+
+paths:
+  raw_dir: "data/raw/wind/"
+  raw_file: "data/raw/wind/nrel_india_wind_2014_23.25N_69.67E.csv"
+  processed_dir: "data/processed/wind/"
+  pilot_file: "data/processed/wind/wind_hourly_pilot.csv"
+
+location:
+  region: "Western_India_Coastal"
+  latitude: 23.25
+  longitude: 69.67
+  elevation_m: 35.0
+  timezone: "UTC+05:30"
+
+target:
+  column: "wind_speed"
+  height_above_ground: "100m"
+  unit: "m/s"
+  min_val: 0.0
+  max_val: 75.0
+
+turbine:
+  model: "Generic_2.0MW_Illustrative_Proxy"
+  rated_power_kw: 2000.0
+  hub_height_m: 100.0
+  cut_in_speed_ms: 3.0
+  rated_speed_ms: 12.0
+  cut_out_speed_ms: 25.0
+  power_unit: "kW"
+  curve_type: "aerodynamic_cubic_proxy"
+  note: "Illustrative engineering approximation for power proxy estimation from forecasted wind speeds; not a validated commercial turbine curve or measured wind-farm generation."
+
+windowing:
+  sequence_length: 24  # Past 24 hours of inputs
+  forecast_horizon: 1   # Predict t+1 hour ahead
+  step_size: 1
+
+features:
+  columns:
+    - "wind_speed"      # Hub-height wind speed (m/s)
+    - "wind_direction"  # Meteorological wind direction (degrees)
+    - "temperature"     # Ambient air temperature (°C)
+    - "pressure"        # Atmospheric surface pressure (hPa)
+
+preprocessing:
+  scaling: "standard_scaler"
+  fit_partition: "train_only"  # Strict zero-leakage policy
+
+split:
+  policy: "chronological"
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  embargo_hours: 24  # 24-hour purge between split boundaries to prevent overlap
+  random_state: 42
+
+dataloader:
+  batch_size: 32
+  num_workers: 0  # Windows-safe
+  shuffle_train: true
+  pin_memory: false

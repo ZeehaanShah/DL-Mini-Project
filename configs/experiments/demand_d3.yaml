@@ -1,0 +1,19 @@
+experiment_id: EXP_DEMAND_DL_D3
+model_name: DemandLSTM
+dataset: BDG2
+task: demand_forecasting
+sequence_length: 24
+forecast_horizon: 1
+input_dim: 1
+hidden_dim: 32
+num_layers: 2
+dropout: 0.2
+learning_rate: 0.001
+batch_size: 32
+max_epochs: 15
+early_stopping_patience: 4
+random_seed: 42
+loss: mse
+metric_unit: kWh
+features_used: ["demand_kwh"]
+description: "D3: DemandLSTM 2-layer stacked, hidden=32, num_layers=2, lr=0.001, dropout=0.2"

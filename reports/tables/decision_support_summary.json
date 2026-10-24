@@ -1,0 +1,186 @@
+{
+  "framework_title": "A Multimodal, Uncertainty-Aware Decision-Support Framework for Location-Specific Renewable Energy Feasibility and Energy-Mix Optimization",
+  "simulation_parameters": {
+    "n_hours": 240,
+    "grid_import_limit_kw": 100.0,
+    "costs": {
+      "solar_capex_per_kw": 800.0,
+      "wind_capex_per_kw": 1200.0,
+      "battery_capex_per_kwh": 250.0,
+      "grid_energy_rate": 0.12,
+      "unmet_demand_penalty": 2.0,
+      "curtailment_penalty": 0.01,
+      "amortize_to_horizon_hours": 240.0,
+      "lifetime_years": 20.0
+    }
+  },
+  "baseline_100_percent_grid": {
+    "solar_kw": 0.0,
+    "wind_kw": 0.0,
+    "battery_kwh": 0.0,
+    "metrics": {
+      "n_hours": 240,
+      "total_demand_kwh": 11788.5773,
+      "available_renewable_kwh": 0.0,
+      "served_demand_kwh": 11788.5773,
+      "renewable_used_kwh": 0.0,
+      "battery_discharge_kwh": 0.0,
+      "battery_charge_kwh": 0.0,
+      "grid_import_kwh": 11788.5773,
+      "unmet_demand_kwh": 0.0,
+      "curtailment_kwh": 0.0,
+      "renewable_penetration": 0.0,
+      "direct_renewable_share": 0.0,
+      "grid_dependence_fraction": 1.0,
+      "loss_of_load_fraction": 0.0,
+      "curtailment_fraction": 0.0,
+      "loss_of_load_hours": 0,
+      "peak_unmet_demand_kw": 0.0,
+      "peak_grid_import_kw": 90.3357
+    },
+    "costs": {
+      "capex": 0.0,
+      "opex": 1414.63,
+      "total_cost": 1414.63
+    }
+  },
+  "cost_optimal_configuration": {
+    "capacities": {
+      "solar_kw": 150.0,
+      "wind_kw": 0.0,
+      "battery_kwh": 200.0
+    },
+    "metrics": {
+      "n_hours": 240,
+      "total_demand_kwh": 11788.5773,
+      "available_renewable_kwh": 5058.6974,
+      "served_demand_kwh": 11788.5773,
+      "renewable_used_kwh": 3647.2193,
+      "battery_discharge_kwh": 870.3422,
+      "battery_charge_kwh": 941.3305,
+      "grid_import_kwh": 7271.0158,
+      "unmet_demand_kwh": 0.0,
+      "curtailment_kwh": 470.1475,
+      "renewable_penetration": 0.3832,
+      "direct_renewable_share": 0.3094,
+      "grid_dependence_fraction": 0.6168,
+      "loss_of_load_fraction": 0.0,
+      "curtailment_fraction": 0.0929,
+      "loss_of_load_hours": 0,
+      "peak_unmet_demand_kw": 0.0,
+      "peak_grid_import_kw": 90.3357
+    },
+    "costs": {
+      "capex": 232.88,
+      "opex": 877.22,
+      "total_cost": 1110.1
+    },
+    "comparison_vs_baseline": {
+      "baseline_grid_import_kwh": 11788.5773,
+      "optimized_grid_import_kwh": 7271.0158,
+      "grid_reduction_kwh": 4517.5615,
+      "grid_reduction_pct": 38.32,
+      "baseline_unmet_kwh": 0.0,
+      "optimized_unmet_kwh": 0.0,
+      "baseline_total_cost": 1414.63,
+      "optimized_total_cost": 1110.1,
+      "cost_diff": -304.53,
+      "cost_savings_pct": 21.53,
+      "renewable_penetration_achieved": 0.3832
+    }
+  },
+  "grid_optimal_configuration": {
+    "capacities": {
+      "solar_kw": 150.0,
+      "wind_kw": 300.0,
+      "battery_kwh": 200.0
+    },
+    "metrics": {
+      "n_hours": 240,
+      "total_demand_kwh": 11788.5773,
+      "available_renewable_kwh": 11423.6276,
+      "served_demand_kwh": 11788.5773,
+      "renewable_used_kwh": 6040.3265,
+      "battery_discharge_kwh": 692.069,
+      "battery_charge_kwh": 730.7053,
+      "grid_import_kwh": 5056.1818,
+      "unmet_demand_kwh": 0.0,
+      "curtailment_kwh": 4652.5958,
+      "renewable_penetration": 0.5711,
+      "direct_renewable_share": 0.5124,
+      "grid_dependence_fraction": 0.4289,
+      "loss_of_load_fraction": 0.0,
+      "curtailment_fraction": 0.4073,
+      "loss_of_load_hours": 0,
+      "peak_unmet_demand_kw": 0.0,
+      "peak_grid_import_kw": 90.3092
+    },
+    "costs": {
+      "capex": 726.03,
+      "opex": 653.27,
+      "total_cost": 1379.3
+    },
+    "comparison_vs_baseline": {
+      "baseline_grid_import_kwh": 11788.5773,
+      "optimized_grid_import_kwh": 5056.1818,
+      "grid_reduction_kwh": 6732.3955,
+      "grid_reduction_pct": 57.11,
+      "baseline_unmet_kwh": 0.0,
+      "optimized_unmet_kwh": 0.0,
+      "baseline_total_cost": 1414.63,
+      "optimized_total_cost": 1379.3,
+      "cost_diff": -35.33,
+      "cost_savings_pct": 2.5,
+      "renewable_penetration_achieved": 0.5711
+    }
+  },
+  "uncertainty_stress_evaluation": {
+    "nominal_confidence": 0.9,
+    "scenarios": [
+      {
+        "scenario": "Conservative (Stress)",
+        "demand_kwh": 12931.6278,
+        "renewable_kwh": 4299.8928,
+        "grid_import_kwh": 8765.2138,
+        "unmet_demand_kwh": 0.0,
+        "curtailment_kwh": 92.1233,
+        "renewable_penetration": 0.3222,
+        "loss_of_load_fraction": 0.0,
+        "loss_of_load_hours": 0
+      },
+      {
+        "scenario": "Central (Expected)",
+        "demand_kwh": 11788.5773,
+        "renewable_kwh": 5058.6974,
+        "grid_import_kwh": 7271.0158,
+        "unmet_demand_kwh": 0.0,
+        "curtailment_kwh": 470.1475,
+        "renewable_penetration": 0.3832,
+        "loss_of_load_fraction": 0.0,
+        "loss_of_load_hours": 0
+      },
+      {
+        "scenario": "Favorable (Optimistic)",
+        "demand_kwh": 10645.5267,
+        "renewable_kwh": 5817.502,
+        "grid_import_kwh": 5917.1998,
+        "unmet_demand_kwh": 0.0,
+        "curtailment_kwh": 978.4922,
+        "renewable_penetration": 0.4442,
+        "loss_of_load_fraction": 0.0,
+        "loss_of_load_hours": 0
+      }
+    ],
+    "limitations": [
+      "Uncertainty bounds are constructed from marginal split conformal intervals.",
+      "Joint coverage is not guaranteed without copula correlation modeling or Bonferroni scaling.",
+      "Demand conformal intervals exhibit empirical test set undercoverage due to Florida seasonal distribution shift.",
+      "Wind generation uses an illustrative generic 2.0 MW turbine power curve proxy."
+    ]
+  },
+  "provenance_and_limitations": {
+    "provenance": "SYNTHETIC_SCENARIO",
+    "is_colocated": false,
+    "disclaimer": "Composite multimodal scenario combining normalized characteristic signatures from Models B (irradiance), C (wind speed), and D (demand) for proof-of-concept decision-support validation. Does NOT claim physical co-location."
+  }
+}

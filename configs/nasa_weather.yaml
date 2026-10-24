@@ -1,0 +1,43 @@
+# Configuration for Model B: NASA POWER Next-Hour Solar Irradiance Forecasting
+dataset_name: "nasa_power"
+task: "one_hour_ahead_forecasting"
+description: "Sliding-window sequence forecasting of all-sky surface downward shortwave irradiance"
+forecast_horizon_hours: 1  # 1-hour ahead (t -> t+1)
+
+paths:
+  csv_path: "data/raw/nasa_power/POWER_Point_Hourly_20230101_20231231_019d08N_072d88E_LST.csv"
+
+windowing:
+  sequence_length: 24  # Past 24 hours of inputs
+  forecast_horizon: 1   # Predict hour t+1
+  step_size: 1
+
+features:
+  columns:
+    - "ALLSKY_SFC_SW_DWN"  # Solar Irradiance (Wh/m^2)
+    - "T2M"                # Temperature at 2m (C)
+    - "RH2M"               # Relative Humidity at 2m (%)
+    - "WS10M"              # Wind Speed at 10m (m/s)
+
+target:
+  column: "ALLSKY_SFC_SW_DWN"
+  unit: "Wh/m^2"
+  min_val: 0.0
+
+preprocessing:
+  scaling: "standard_scaler"
+  fit_partition: "train_only"  # Strict zero-leakage policy
+
+split:
+  policy: "chronological"
+  train_ratio: 0.70
+  val_ratio: 0.15
+  test_ratio: 0.15
+  embargo_hours: 24  # 24-hour purge between split boundaries
+  random_state: 42
+
+dataloader:
+  batch_size: 32
+  num_workers: 0  # Windows-safe multiprocessing
+  shuffle_train: true
+  pin_memory: false

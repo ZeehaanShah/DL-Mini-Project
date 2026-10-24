@@ -1,0 +1,56 @@
+{
+  "experiment_id": "EXP_SOLAR_DL_S1",
+  "total_duration_sec": 510.11,
+  "best_epoch": 4,
+  "best_val_loss": 23.282266,
+  "best_metrics": {
+    "loss": 23.282266,
+    "mae": 3.8445,
+    "rmse": 4.8269,
+    "r2": 0.6327,
+    "n_samples": 12818
+  },
+  "early_stopped": false,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 31.304832,
+      "val_loss": 27.466061,
+      "val_mae": 4.1429,
+      "val_rmse": 5.2428,
+      "val_r2": 0.5666,
+      "lr": 0.001,
+      "epoch_duration_sec": 124.81
+    },
+    {
+      "epoch": 2,
+      "train_loss": 24.403002,
+      "val_loss": 29.333949,
+      "val_mae": 4.2069,
+      "val_rmse": 5.4184,
+      "val_r2": 0.5371,
+      "lr": 0.001,
+      "epoch_duration_sec": 129.77
+    },
+    {
+      "epoch": 3,
+      "train_loss": 23.979494,
+      "val_loss": 26.789628,
+      "val_mae": 4.0891,
+      "val_rmse": 5.1774,
+      "val_r2": 0.5774,
+      "lr": 0.001,
+      "epoch_duration_sec": 134.78
+    },
+    {
+      "epoch": 4,
+      "train_loss": 23.566079,
+      "val_loss": 23.282266,
+      "val_mae": 3.8445,
+      "val_rmse": 4.8269,
+      "val_r2": 0.6327,
+      "lr": 0.001,
+      "epoch_duration_sec": 120.63
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+experiment_id: EXP_SOLAR_DL_S2
+model_name: ResNet18Nowcaster
+dataset: SKIPP'D
+task: solar_nowcasting
+mode: feature_extractor
+pretrained: true
+learning_rate: 0.0003
+dropout: 0.2
+head_hidden_dim: null
+batch_size: 32
+max_epochs: 8
+early_stopping_patience: 3
+random_seed: 42
+loss: mse
+metric_unit: kW
+description: "S2: Pretrained ResNet-18 frozen backbone, lr=0.0003, dropout=0.2"
