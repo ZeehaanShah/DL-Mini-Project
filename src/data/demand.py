@@ -204,6 +204,7 @@ def build_demand_datasets(
     embargo_hours: int = 24,
     scale: bool = True,
     max_demand_kwh: float = 10000.0,
+    split_basis: str = "legacy_source",
 ) -> Tuple[DemandDataset, DemandDataset, DemandDataset, Optional[StandardScaler], Optional[StandardScaler]]:
     """
     Construct leakage-safe, causally aligned DemandDataset instances for train, val, and test splits.
@@ -259,6 +260,7 @@ def build_demand_datasets(
         val_ratio=val_ratio,
         test_ratio=test_ratio,
         embargo_steps=embargo_hours,
+        ratio_basis=split_basis,
     )
 
     train_feat = train_df[feature_cols].to_numpy(dtype=np.float32)

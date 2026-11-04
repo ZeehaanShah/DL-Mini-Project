@@ -240,6 +240,36 @@ class TestNasaLeakage:
         assert val_target_times.max() < test_target_times.min(), "Val target exceeds Test target timestamp"
 
 
+def test_chronological_split_honors_all_ratios_after_embargo():
+    """Split fractions apply to retained records; embargo rows are purged separately."""
+    df = pd.DataFrame({"value": np.arange(100)})
+    train, val, test = split_timeseries_chronological(
+        df, train_ratio=0.70, val_ratio=0.15, test_ratio=0.15, embargo_steps=2
+    )
+    assert (len(train), len(val), len(test)) == (67, 14, 15)
+    assert len(train) + len(val) + len(test) + 4 == len(df)
+
+
+def test_chronological_split_legacy_mode_preserves_checkpoint_boundaries():
+    """Explicit compatibility mode reproduces the pre-fix split sizes."""
+    df = pd.DataFrame({"value": np.arange(100)})
+    train, val, test = split_timeseries_chronological(
+        df, train_ratio=0.70, val_ratio=0.15, test_ratio=0.15,
+        embargo_steps=2, ratio_basis="legacy_source"
+    )
+    assert (len(train), len(val), len(test)) == (70, 15, 11)
+
+
+def test_chronological_split_rejects_invalid_ratios_and_short_series():
+    df = pd.DataFrame({"value": np.arange(20)})
+    with pytest.raises(ValueError, match="sum to 1.0"):
+        split_timeseries_chronological(df, train_ratio=0.7, val_ratio=0.2, test_ratio=0.2, embargo_steps=1)
+    with pytest.raises(ValueError, match="too short"):
+        split_timeseries_chronological(
+            df.iloc[:4], train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, embargo_steps=2
+        )
+
+
 class TestCrossDatasetIsolation:
     """Verify that independent datasets are never conflated or unified inappropriately."""
 

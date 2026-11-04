@@ -333,6 +333,7 @@ def build_nasa_datasets(
     feature_cols: Optional[List[str]] = None,
     target_col: str = "ALLSKY_SFC_SW_DWN",
     scale: bool = True,
+    split_basis: str = "legacy_source",
 ) -> Tuple[NasaWeatherDataset, NasaWeatherDataset, NasaWeatherDataset, Optional[StandardScaler], Optional[StandardScaler]]:
     """
     Construct leakage-free NASA POWER PyTorch Datasets for sequence forecasting.
@@ -365,6 +366,7 @@ def build_nasa_datasets(
         val_ratio=val_ratio,
         test_ratio=test_ratio,
         embargo_steps=embargo_hours,
+        ratio_basis=split_basis,
     )
 
     train_feat = train_df[feature_cols].to_numpy(dtype=np.float32)

@@ -1,0 +1,1815 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 328c190..a2dd0b1 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -2,6 +2,21 @@
+ 
+ All changes are recorded with date, description, files affected, and rationale.
+ 
++## 2026-10-27 — Isolated audit fixes and validation
++
++- Description: Created an independent Downloads copy and repaired dashboard metric sourcing, NASA checkpoint architecture inference, split-ratio handling, prediction-domain validation, battery carry-in attribution/costing, interval-duration conversion, uncertainty language, and synthetic scenario descriptions. Added README and regression coverage; regenerated Stage 4/5 outputs.
++- Files affected: README.md, PROJECT_CONTEXT.md, CHANGELOG.md, app.py, scripts/evaluate_test_set.py, src/data builders/splitter, src/decision_support modules, src/frontend/model_loaders.py, tests, registry/output tables, Stage 3/5 reports, reports/audit.
++- Rationale: Resolve reproduced pipeline issues while preserving frozen checkpoints and leaving the original working tree and Git history untouched.
++- Validation: 205 passed / 16 warnings; frozen-checkpoint test metrics reproduced; uncertainty and decision-support scripts exited successfully; Streamlit returned HTTP 200. No training or package installation.
++- Open limitations: demand conformal undercoverage, no cyclic terminal SOC constraint, C3/C4 circular direction encoding, incomplete SKIPP'D training shards, and synthetic non-co-located Model E profiles. See reports/audit/final_validation_report.md.
++
++## 2026-10-27 — Read-only code and results audit
++
++- **Description:** Documented a static review of pipeline code, saved experiment outputs, dashboard metrics, uncertainty results, and decision-support accounting.
++- **Files affected:** `reports/code_pipeline_audit_2026-10-27.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`.
++- **Rationale:** The user requested a problem map and actionable fix plan while explicitly prohibiting code and Git-history changes.
++- **Validation:** Inspected source/configuration and existing CSV/JSON/report/checkpoint-history artifacts; checked current `.venv` package metadata and the pre-existing Git working-tree diff. No tests or application run performed. No code, data, checkpoint, or Git-history changes made.
++
+ ---
+ 
+ ## 2026-10-20 — Phase 1: Project Initialization and Data Audit
+diff --git a/PROJECT_CONTEXT.md b/PROJECT_CONTEXT.md
+index 4424c86..ba12af6 100644
+--- a/PROJECT_CONTEXT.md
++++ b/PROJECT_CONTEXT.md
+@@ -1,7 +1,22 @@
++# Current Audit Status — 2026-10-27
++
++Status: COMPLETED for isolated code audit, fixes, and validation. Changes are confined to C:/Users/shahz/Downloads/DL-MiniProject-Fixed-20261027 on branch codex/isolated-audit-fixes. Original project retained its pre-copy status and commit; no training, package installation, commit, or push occurred.
++
++- Full tests: 205 passed, 16 warnings.
++- App startup: verified; local HTTP response 200.
++- Frozen test metrics reproduced for Models A–D: reports/audit/verified_metrics.md.
++- Decision-support and uncertainty pipelines rerun successfully.
++- Fixes and remaining actions: reports/audit/fix_log.md and reports/audit/final_validation_report.md.
++- Open items: demand interval undercoverage, no cyclic SOC constraint, C3/C4 circular direction encoding, incomplete SKIPP'D training shards, no co-located data for real-site claims.
++
++---
++
+ # PROJECT_CONTEXT.md — Persistent Project Memory
+ 
+ **Last updated:** 2026-10-24T16:25 IST (Stage 8 UI/UX Accessibility & Readability Repair Completed; Presentation-Only Changes; Not Runtime-Tested per User Instruction)
+ 
++**Audit update:** 2026-10-27 (read-only audit completed; details in `reports/code_pipeline_audit_2026-10-27.md`; no code/data/checkpoint/Git-history changes)
++
+ ---
+ 
+ ## 1. Project Overview
+@@ -13,6 +28,8 @@
+ | **Objective** | Multimodal, uncertainty-aware decision-support PoC for renewable energy forecasting |
+ | **Status** | Project Complete; Interactive Multi-Page Streamlit Dashboard (`app.py`); Models A–E Fully Integrated; 192 Passed Tests (100%) |
+ 
++> **Audit qualification (2026-10-27):** The completion/test-count statement above reflects historical project notes, not a fresh verification in this audit. Saved artifacts and dashboard values contain mismatches; see the audit report. No tests, model evaluations, or application launch were performed for this read-only review.
++
+ ### Research Objectives
+ 1. Demonstrate CNN transfer learning on sky images for solar PV output forecasting (SKIPP'D)
+ 2. Build weather/radiation forecasting from NASA POWER hourly data
+@@ -445,4 +462,4 @@ python -c "import pandas as pd; df = pd.read_csv('experiments/experiment_registr
+ 
+ 
+ 
+-  
+\ No newline at end of file
++  
+diff --git a/app.py b/app.py
+index cc75701..baace7e 100644
+--- a/app.py
++++ b/app.py
+@@ -27,6 +27,7 @@ from PIL import Image
+ # Import frontend loaders, components, and charts
+ from src.frontend.model_loaders import (
+     load_registry_data,
++    get_verified_metric,
+     load_uncertainty_summary,
+     load_decision_support_summary,
+     load_feasibility_scenarios_table,
+@@ -70,6 +71,40 @@ from src.decision_support.energy_balance import BatteryConfig
+ # -----------------------------------------------------------------------------
+ # APP CONFIGURATION & THEMING
+ # -----------------------------------------------------------------------------
++def _metric_text(experiment_id: str, metric: str, decimals: int, unit: str = "") -> str:
++    """Format a verified test metric from the experiment registry."""
++    value = get_verified_metric(experiment_id, metric)
++    if value is None:
++        return "Unavailable"
++    formatted = f"{value:,.{decimals}f}"
++    return f"{formatted} {unit}".strip()
++
++
++def _metric_count(experiment_id: str) -> str:
++    """Format the verified test sample count from the experiment registry."""
++    value = get_verified_metric(experiment_id, "n_samples")
++    return f"{int(value):,} samples" if value is not None else "Unavailable"
++
++
++def _uncertainty_card_html(title: str, summary: dict, unit: str, metric_suffix: str) -> str:
++    """Build a calibration/test coverage card from the generated uncertainty artifact."""
++    eval_80 = summary.get("eval_80", {})
++    eval_90 = summary.get("eval_90", {})
++    cal_n = summary.get("cal_samples")
++    test_n = summary.get("test_samples")
++    if not eval_80 or not eval_90:
++        return f'<div class="chart-card"><b>{title}</b><p>Generated coverage results are unavailable.</p></div>'
++    return f"""<div class="chart-card">
++      <div style="font-weight:700; color:#172033; font-size:1.1rem; margin-bottom:.5rem;">{title}</div>
++      <div style="font-size:.85rem; color:#475569; margin-bottom:.85rem;">Calibration samples: {cal_n:,} | Test samples: {test_n:,}</div>
++      <table class="styled-table"><thead><tr><th>Metric</th><th>80% nominal</th><th>90% nominal</th></tr></thead>
++      <tbody>
++      <tr><td>Empirical test coverage</td><td>{eval_80.get('empirical_coverage', float('nan')):.2%}</td><td>{eval_90.get('empirical_coverage', float('nan')):.2%}</td></tr>
++      <tr><td>Mean interval width</td><td>{eval_80.get('mpiw_'+metric_suffix, float('nan')):.2f} {unit}</td><td>{eval_90.get('mpiw_'+metric_suffix, float('nan')):.2f} {unit}</td></tr>
++      <tr><td>Winkler interval score</td><td>{eval_80.get('winkler_score', float('nan')):.2f}</td><td>{eval_90.get('winkler_score', float('nan')):.2f}</td></tr>
++      </tbody></table></div>"""
++
++
+ st.set_page_config(
+     page_title="Renewable Energy Intelligence",
+     page_icon="⚡",
+@@ -176,11 +211,11 @@ if st.session_state["nav_page"] == "1. Project Overview":
+         render_model_card(
+             model_id="Model A",
+             title="Solar PV Output (Model A)",
+-            metric_value="2.301 kW",
++            metric_value=_metric_text("EXP_SOLAR_DL_S3_TEST", "mae", 2, "kW"),
+             metric_label="Test MAE (ResNet-18)",
+             color_theme="green",
+             icon="☀️",
+-            badge="↗ 40% vs Base",
++            badge="Test MAE",
+         )
+         if st.button("View Solar Model", key="btn_card_m1", use_container_width=True):
+             set_page("2. Solar PV Nowcasting (Model A)")
+@@ -190,11 +225,11 @@ if st.session_state["nav_page"] == "1. Project Overview":
+         render_model_card(
+             model_id="Model B",
+             title="Solar Irradiance (Model B)",
+-            metric_value="16.26 Wh/m²",
++            metric_value=_metric_text("EXP_NASA_DL_W1_TEST", "mae", 2, "Wh/m²"),
+             metric_label="Test MAE (WeatherLSTM)",
+             color_theme="blue",
+             icon="▦",
+-            badge="📊 R² = 0.989",
++            badge=f"Test R² = {_metric_text('EXP_NASA_DL_W1_TEST', 'r2', 4)}",
+         )
+         if st.button("View Irradiance Model", key="btn_card_m2", use_container_width=True):
+             set_page("3. Solar Irradiance Forecasting (Model B)")
+@@ -204,11 +239,11 @@ if st.session_state["nav_page"] == "1. Project Overview":
+         render_model_card(
+             model_id="Model C",
+             title="Wind Speed (Model C)",
+-            metric_value="0.591 m/s",
++            metric_value=_metric_text("EXP_WIND_DL_C2_TEST", "mae", 3, "m/s"),
+             metric_label="Test MAE (WindLSTM)",
+             color_theme="teal",
+             icon="🌀",
+-            badge="🍃 93% Cov",
++            badge="Test set",
+         )
+         if st.button("View Wind Model", key="btn_card_m3", use_container_width=True):
+             set_page("4. Wind Forecasting (Model C)")
+@@ -218,11 +253,11 @@ if st.session_state["nav_page"] == "1. Project Overview":
+         render_model_card(
+             model_id="Model D",
+             title="Electricity Demand (Model D)",
+-            metric_value="2.615 kWh",
++            metric_value=_metric_text("EXP_DEMAND_DL_D2_TEST", "mae", 3, "kWh"),
+             metric_label="Test MAE (DemandLSTM)",
+             color_theme="purple",
+             icon="🏢",
+-            badge="📈 R² = 0.923",
++            badge=f"Test R² = {_metric_text('EXP_DEMAND_DL_D2_TEST', 'r2', 4)}",
+         )
+         if st.button("View Demand Model", key="btn_card_m4", use_container_width=True):
+             set_page("5. Electricity Demand Forecasting (Model D)")
+@@ -410,13 +445,13 @@ elif st.session_state["nav_page"] == "2. Solar PV Nowcasting (Model A)":
+     # Model Metric Cards Row
+     m1, m2, m3, m4 = st.columns(4)
+     with m1:
+-        render_model_card("Model A", "Test-Set MAE", "2.301 kW", "ResNet-18 (Fine-Tuned)", color_theme="green", icon="☀️", badge="TEST SET")
++        render_model_card("Model A", "Test-Set MAE", _metric_text("EXP_SOLAR_DL_S3_TEST", "mae", 4, "kW"), "ResNet-18 (Fine-Tuned)", color_theme="green", icon="☀️", badge="TEST SET")
+     with m2:
+-        render_model_card("Model A", "Test-Set RMSE", "3.766 kW", "ResNet-18 (Fine-Tuned)", color_theme="blue", icon="📐", badge="TEST SET")
++        render_model_card("Model A", "Test-Set RMSE", _metric_text("EXP_SOLAR_DL_S3_TEST", "rmse", 4, "kW"), "ResNet-18 (Fine-Tuned)", color_theme="blue", icon="📐", badge="TEST SET")
+     with m3:
+-        render_model_card("Model A", "Persistence MAE", "3.842 kW", "Naive 1-min persistence", color_theme="teal", icon="⏱", badge="BASELINE")
++        render_model_card("Model A", "Test Samples", _metric_count("EXP_SOLAR_DL_S3_TEST"), "Official SKIPP'D test parquet", color_theme="teal", icon="🧪", badge="TEST SET")
+     with m4:
+-        render_model_card("Model A", "Error Reduction", "-40.1%", "Superiority over persistence", color_theme="purple", icon="🏆", badge="VERIFIED")
++        render_model_card("Model A", "Test-Set R²", _metric_text("EXP_SOLAR_DL_S3_TEST", "r2", 4), "ResNet-18 (Fine-Tuned)", color_theme="purple", icon="📈", badge="TEST SET")
+ 
+     render_provenance_badge(
+         "Stanford SKIPP'D Ground Fisheye Camera",
+@@ -511,13 +546,13 @@ elif st.session_state["nav_page"] == "3. Solar Irradiance Forecasting (Model B)"
+ 
+     m1, m2, m3, m4 = st.columns(4)
+     with m1:
+-        render_model_card("Model B", "Test-Set MAE", "16.26 Wh/m²", "WeatherLSTM (h=32, L=1)", color_theme="blue", icon="▦", badge="TEST SET")
++        render_model_card("Model B", "Test-Set MAE", _metric_text("EXP_NASA_DL_W1_TEST", "mae", 4, "Wh/m²"), "WeatherLSTM W1 (h=32, L=1)", color_theme="blue", icon="▦", badge="TEST SET")
+     with m2:
+-        render_model_card("Model B", "Test-Set RMSE", "30.68 Wh/m²", "WeatherLSTM", color_theme="green", icon="📐", badge="TEST SET")
++        render_model_card("Model B", "Test-Set RMSE", _metric_text("EXP_NASA_DL_W1_TEST", "rmse", 4, "Wh/m²"), "WeatherLSTM W1", color_theme="green", icon="📐", badge="TEST SET")
+     with m3:
+-        render_model_card("Model B", "Coefficient of Det. (R²)", "0.989", "Near-perfect tracking", color_theme="teal", icon="⭐", badge="R² SCORE")
++        render_model_card("Model B", "Test-Set R²", _metric_text("EXP_NASA_DL_W1_TEST", "r2", 4), "WeatherLSTM W1", color_theme="teal", icon="⭐", badge="TEST SET")
+     with m4:
+-        render_model_card("Model B", "Baseline Naive MAE", "112.43 Wh/m²", "24h seasonal naive", color_theme="purple", icon="⏱", badge="BASELINE")
++        render_model_card("Model B", "Test Samples", _metric_count("EXP_NASA_DL_W1_TEST"), "Current 24-hour embargo split", color_theme="purple", icon="🧪", badge="TEST SET")
+ 
+     render_provenance_badge(
+         "NASA POWER All-Sky Surface Downward Solar",
+@@ -588,9 +623,9 @@ elif st.session_state["nav_page"] == "4. Wind Forecasting (Model C)":
+ 
+     m1, m2, m3, m4 = st.columns(4)
+     with m1:
+-        render_model_card("Model C", "Test Wind MAE", "0.591 m/s", "WindLSTM (h=64, L=1)", color_theme="teal", icon="🌀", badge="TEST SET")
++        render_model_card("Model C", "Test Wind MAE", _metric_text("EXP_WIND_DL_C2_TEST", "mae", 4, "m/s"), "WindLSTM C2 (h=64, L=1)", color_theme="teal", icon="🌀", badge="TEST SET")
+     with m2:
+-        render_model_card("Model C", "Test Wind RMSE", "0.822 m/s", "WindLSTM", color_theme="blue", icon="📐", badge="TEST SET")
++        render_model_card("Model C", "Test Wind RMSE", _metric_text("EXP_WIND_DL_C2_TEST", "rmse", 4, "m/s"), "WindLSTM C2", color_theme="blue", icon="📐", badge="TEST SET")
+     with m3:
+         render_model_card("Model C", "90% Empirical Coverage", "92.83%", "Nominal: 90.0% (Valid)", color_theme="green", icon="🛡️", badge="CONFORMAL")
+     with m4:
+@@ -665,11 +700,11 @@ elif st.session_state["nav_page"] == "5. Electricity Demand Forecasting (Model D
+ 
+     m1, m2, m3, m4 = st.columns(4)
+     with m1:
+-        render_model_card("Model D", "Test Demand MAE", "2.615 kWh", "DemandLSTM (h=64, L=1)", color_theme="purple", icon="🏢", badge="TEST SET")
++        render_model_card("Model D", "Test Demand MAE", _metric_text("EXP_DEMAND_DL_D2_TEST", "mae", 4, "kWh"), "DemandLSTM D2 (h=64, L=1)", color_theme="purple", icon="🏢", badge="TEST SET")
+     with m2:
+-        render_model_card("Model D", "Test Demand RMSE", "4.067 kWh", "DemandLSTM", color_theme="blue", icon="📐", badge="TEST SET")
++        render_model_card("Model D", "Test Demand RMSE", _metric_text("EXP_DEMAND_DL_D2_TEST", "rmse", 4, "kWh"), "DemandLSTM D2", color_theme="blue", icon="📐", badge="TEST SET")
+     with m3:
+-        render_model_card("Model D", "Coefficient of Det. (R²)", "0.923", "Strong load tracking", color_theme="teal", icon="⭐", badge="R² SCORE")
++        render_model_card("Model D", "Test-Set R²", _metric_text("EXP_DEMAND_DL_D2_TEST", "r2", 4), "DemandLSTM D2", color_theme="teal", icon="⭐", badge="TEST SET")
+     with m4:
+         render_model_card("Model D", "90% Empirical Coverage", "85.47%", "Nominal: 90.0% (Shifted)", color_theme="green", icon="🛡️", badge="CONFORMAL")
+ 
+@@ -733,8 +768,8 @@ elif st.session_state["nav_page"] == "6. Uncertainty Analysis (Stage 4)":
+     st.markdown(
+         """
+         Unlike standard deep-learning models that output only a single deterministic point forecast, conformal prediction 
+-        constructs rigorous prediction intervals $[\\hat{y} - q_{1-\\alpha}, \\hat{y} + q_{1-\\alpha}]$ with guaranteed finite-sample 
+-        marginal coverage:
++        constructs prediction intervals $[\\hat{y} - q_{1-\\alpha}, \\hat{y} + q_{1-\\alpha}]$. Split conformal's finite-sample
++        marginal coverage guarantee requires calibration and future observations to be exchangeable:
+         """
+     )
+     st.latex(r"P(Y_{n+1} \in C(X_{n+1})) \ge 1 - \alpha")
+@@ -746,39 +781,12 @@ elif st.session_state["nav_page"] == "6. Uncertainty Analysis (Stage 4)":
+     t_col1, t_col2 = st.columns(2)
+     with t_col1:
+         st.markdown(
+-            '<div class="chart-card" style="border-top: 4px solid #0D9488;">'
+-            '<div style="font-weight: 700; color: #172033; font-size: 1.1rem; margin-bottom: 0.5rem;">🍃 Model C: Wind Speed Calibration</div>'
+-            '<div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.85rem;">Calibration Samples: 1,290 | Test Samples: 1,242</div>'
+-            '<table class="styled-table">'
+-            '<thead><tr><th>Metric</th><th>80% Nominal Level</th><th>90% Nominal Level</th></tr></thead>'
+-            '<tbody>'
+-            '<tr><td>Nominal Coverage Target</td><td>80.0%</td><td>90.0%</td></tr>'
+-            '<tr><td><b>Empirical Test Coverage</b></td><td><span style="background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:9999px; font-weight:700;">84.22% (Valid)</span></td><td><span style="background:#D1FAE5; color:#065F46; padding:2px 8px; border-radius:9999px; font-weight:700;">92.83% (Valid)</span></td></tr>'
+-            '<tr><td>Mean Interval Width (MPIW)</td><td>2.09 m/s</td><td>3.06 m/s</td></tr>'
+-            '<tr><td>Winkler Interval Score</td><td>3.05</td><td>3.92</td></tr>'
+-            '</tbody>'
+-            '</table>'
+-            '<div style="font-size:0.80rem; color:#065F46; font-weight:600;">✔ Meets and exceeds nominal coverage targets under stationary wind distribution.</div>'
+-            '</div>',
++            _uncertainty_card_html("🍃 Model C: Wind Speed Calibration", unc_summary.get("wind", {}), "m/s", "ms"),
+             unsafe_allow_html=True,
+         )
+-
+     with t_col2:
+         st.markdown(
+-            '<div class="chart-card" style="border-top: 4px solid #7C3AED;">'
+-            '<div style="font-weight: 700; color: #172033; font-size: 1.1rem; margin-bottom: 0.5rem;">🏢 Model D: Electricity Demand Calibration</div>'
+-            '<div style="font-size: 0.85rem; color: #475569; margin-bottom: 0.85rem;">Calibration Samples: 2,607 | Test Samples: 2,561</div>'
+-            '<table class="styled-table">'
+-            '<thead><tr><th>Metric</th><th>80% Nominal Level</th><th>90% Nominal Level</th></tr></thead>'
+-            '<tbody>'
+-            '<tr><td>Nominal Coverage Target</td><td>80.0%</td><td>90.0%</td></tr>'
+-            '<tr><td><b>Empirical Test Coverage</b></td><td><span style="background:#FFFBEB; color:#92400E; padding:2px 8px; border-radius:9999px; font-weight:700; border:1px solid #F59E0B;">66.03% (Undercovered)</span></td><td><span style="background:#FFFBEB; color:#92400E; padding:2px 8px; border-radius:9999px; font-weight:700; border:1px solid #F59E0B;">85.47% (Undercovered)</span></td></tr>'
+-            '<tr><td>Mean Interval Width (MPIW)</td><td>4.96 kWh</td><td>9.53 kWh</td></tr>'
+-            '<tr><td>Winkler Interval Score</td><td>15.48</td><td>20.60</td></tr>'
+-            '</tbody>'
+-            '</table>'
+-            '<div style="font-size:0.80rem; color:#92400E; font-weight:600;">⚠️ Undercoverage driven by distribution shift: summer cooling calibration vs autumn/winter test.</div>'
+-            '</div>',
++            _uncertainty_card_html("🏢 Model D: Electricity Demand Calibration", unc_summary.get("demand", {}), "kWh", "kwh"),
+             unsafe_allow_html=True,
+         )
+ 
+@@ -955,16 +963,17 @@ elif st.session_state["nav_page"] == "7. Energy-Mix Optimizer (Model E)":
+ 
+     # Conformal Uncertainty Scenarios
+     st.markdown('<div class="section-heading"><span>🛡️</span><span>Conformal Stress-Testing Scenarios</span></div>', unsafe_allow_html=True)
+-    scenarios = [
+-        {"scenario": "Conservative Stress (R_low, D_upp)", "demand_kwh": 12931.6, "renewable_kwh": 2795.3, "grid_import_kwh": 10136.3, "curtailment_kwh": 0.0},
+-        {"scenario": "Central Expected (R_cent, D_cent)", "demand_kwh": 11788.6, "renewable_kwh": 4517.6, "grid_import_kwh": 7271.0, "curtailment_kwh": 0.0},
+-        {"scenario": "Favorable Optimistic (R_upp, D_low)", "demand_kwh": 10645.5, "renewable_kwh": 6239.9, "grid_import_kwh": 4405.6, "curtailment_kwh": 0.0},
+-    ]
+-    fig_scenarios = create_scenario_comparison_bar_chart(scenarios)
+-    st.plotly_chart(fig_scenarios, use_container_width=True)
++    decision_summary = load_decision_support_summary()
++    stress = decision_summary.get("uncertainty_stress_evaluation", {})
++    scenarios = stress.get("scenarios", [])
++    if scenarios:
++        fig_scenarios = create_scenario_comparison_bar_chart(scenarios)
++        st.plotly_chart(fig_scenarios, use_container_width=True)
++    else:
++        st.warning("Generated uncertainty stress scenarios are unavailable; rerun scripts/run_decision_support.py.")
+ 
+     render_disclaimer(
+-        "<b>Decision-Support PoC Caveat</b>: The integrated scenario synchronizes four independent real datasets across Stanford, Mumbai, Gujarat, and Orlando "
++        "<b>Decision-Support PoC Caveat</b>: The integrated scenario pairs independent profile sequences from Stanford, Mumbai, Gujarat, and Orlando by array position; their timestamps are not synchronized "
+         "for the sole purpose of stress-testing the multi-modal uncertainty framework. It does not represent an empirical physical installation.",
+         warning=True,
+     )
+diff --git a/experiments/experiment_registry.csv b/experiments/experiment_registry.csv
+index 7a263af..799e479 100644
+--- a/experiments/experiment_registry.csv
++++ b/experiments/experiment_registry.csv
+@@ -14,8 +14,6 @@ EXP_SOLAR_DL_S1,2026-10-20T21:28:20,SKIPP'D,solar_nowcasting,ResNet18_feature_ex
+ EXP_SOLAR_DL_S2,2026-10-20T22:21:40,SKIPP'D,solar_nowcasting,ResNet18_feature_extractor,val,single_sky_image_64x64,pv (kW),0,0,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\solar_s2.yaml,42,12818,3.7877,4.8055,0.6359,kW,COMPLETED,"Best epoch: 6/6, lr=0.0003, dropout=0.2, early_stopped=False"
+ EXP_SOLAR_DL_S3,2026-10-20T22:52:57,SKIPP'D,solar_nowcasting,ResNet18_fine_tune,val,single_sky_image_64x64,pv (kW),0,0,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\solar_s3.yaml,42,12818,0.8378,1.3084,0.973,kW,COMPLETED,"Best epoch: 4/6, lr=0.0001, dropout=0.2, early_stopped=False"
+ EXP_SOLAR_DL_S4,2026-10-20T23:21:17,SKIPP'D,solar_nowcasting,ResNet18_fine_tune,val,single_sky_image_64x64,pv (kW),0,0,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\solar_s4.yaml,42,12818,0.906,1.3546,0.9711,kW,COMPLETED,"Best epoch: 4/6, lr=0.0001, dropout=0.4, early_stopped=False"
+-EXP_SOLAR_DL_S3_TEST,2026-10-21T00:22:35,SKIPP'D,solar_nowcasting,ResNet18_fine_tune,test,single_sky_image_64x64,pv (kW),0,0,,42,14003,2.3008,3.3736,0.8052,kW,COMPLETED,Held-out test set evaluation. Checkpoint from best_model.pt
+-EXP_NASA_DL_W1_TEST,2026-10-21T00:22:35,NASA_POWER,irradiance_forecasting,WeatherLSTM,test,"ALLSKY_SFC_SW_DWN,T2M,RH2M,WS10M (24h past)",ALLSKY_SFC_SW_DWN (Wh/m²),24,1,,42,1242,16.2575,30.1767,0.9844,Wh/m^2,COMPLETED,Held-out test set evaluation. Checkpoint from best_model.pt
+ EXP_WIND_BASE_PERSIST,2026-10-21T17:50:50,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindPersistenceBaseline,val,wind_speed (24h past),wind_speed (m/s),24,1,configs/wind_resource.yaml,42,0,,,,m/s,BLOCKED,BLOCKED pending NREL raw data acquisition. Ingestion and validator verified on synthetic fixtures.
+ EXP_WIND_BASE_SEASONAL,2026-10-21T17:50:50,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindSeasonalNaiveBaseline,val,wind_speed (24h past),wind_speed (m/s),24,1,configs/wind_resource.yaml,42,0,,,,m/s,BLOCKED,BLOCKED pending NREL raw data acquisition.
+ EXP_WIND_DL_LSTM_PLANNED,2026-10-21T17:50:50,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindLSTM,val,"wind_speed,wind_direction,temperature,pressure (24h past)",wind_speed (m/s),24,1,configs/wind_resource.yaml,42,0,,,,m/s,PLANNED,"PLANNED: 1-2 layer LSTM architecture implemented, pending real data."
+@@ -33,10 +31,6 @@ EXP_WIND_BASE_PERSIST_VAL,2026-10-21T21:32:00,NREL_WIND_TOOLKIT,wind_speed_forec
+ EXP_WIND_BASE_PERSIST_TEST,2026-10-21T21:32:00,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindPersistenceBaseline,test,wind_speed (24h past),wind_speed (m/s),24,1,configs/wind_resource.yaml,42,1242,0.6002,0.8679,0.7295,m/s,COMPLETED,Held-out test set evaluation. Period: 2014-11-10 06:30:00 to 2014-12-31 23:30:00
+ EXP_WIND_BASE_SEASONAL_VAL,2026-10-21T21:32:00,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindSeasonalNaiveBaseline,val,wind_speed (24h past),wind_speed (m/s),24,1,configs/wind_resource.yaml,42,1290,1.419,1.9749,0.2117,m/s,COMPLETED,Predicts observation from t - 23h (index 0). Period: 2014-09-15 12:30:00 to 2014-11-08 05:30:00
+ EXP_WIND_BASE_SEASONAL_TEST,2026-10-21T21:32:00,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindSeasonalNaiveBaseline,test,wind_speed (24h past),wind_speed (m/s),24,1,configs/wind_resource.yaml,42,1242,1.2661,1.6807,-0.0142,m/s,COMPLETED,Held-out test set evaluation. Period: 2014-11-10 06:30:00 to 2014-12-31 23:30:00
+-EXP_WIND_CP_80,2026-10-21T22:20:08,NREL_WIND_TOOLKIT,uncertainty_estimation,SplitConformal_WindLSTM,test,wind_speed (24h past),wind_speed (m/s),24,1,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\wind_c2.yaml,42,1242,2.0877,3.0501,0.8422,m/s,COMPLETED,"Nominal 80% split conformal interval. Empirical cov=84.22%, MPIW=2.0877 m/s, Winkler=3.0501, q=1.0439 m/s. Clipped >= 0 m/s (width red: 0.0002 m/s). Cal N=1290 (2014-09-15 12:30:00 to 2014-11-08 05:30:00)"
+-EXP_WIND_CP_90,2026-10-21T22:20:08,NREL_WIND_TOOLKIT,uncertainty_estimation,SplitConformal_WindLSTM,test,wind_speed (24h past),wind_speed (m/s),24,1,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\wind_c2.yaml,42,1242,3.0602,3.9157,0.9283,m/s,COMPLETED,"Nominal 90% split conformal interval. Empirical cov=92.83%, MPIW=3.0602 m/s, Winkler=3.9157, q=1.5316 m/s. Clipped >= 0 m/s (width red: 0.0031 m/s). Cal N=1290 (2014-09-15 12:30:00 to 2014-11-08 05:30:00)"
+-EXP_DEMAND_CP_80,2026-10-21T22:20:09,BDG2,uncertainty_estimation,SplitConformal_DemandLSTM,test,demand_kwh (24h past),demand_kwh (kWh),24,1,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\demand_d2.yaml,42,2561,4.9561,15.4839,0.6603,kWh,COMPLETED,"Nominal 80% split conformal interval. Empirical cov=66.03%, MPIW=4.9561 kWh, Winkler=15.4839, q=2.4781 kWh. Clipped >= 0 kWh (width red: 0.0000 kWh). Cal N=2607 (2017-05-28 16:00:00 to 2017-09-14 06:00:00)"
+-EXP_DEMAND_CP_90,2026-10-21T22:20:09,BDG2,uncertainty_estimation,SplitConformal_DemandLSTM,test,demand_kwh (24h past),demand_kwh (kWh),24,1,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\experiments\demand_d2.yaml,42,2561,9.5254,20.6045,0.8547,kWh,COMPLETED,"Nominal 90% split conformal interval. Empirical cov=85.47%, MPIW=9.5254 kWh, Winkler=20.6045, q=4.7627 kWh. Clipped >= 0 kWh (width red: 0.0000 kWh). Cal N=2607 (2017-05-28 16:00:00 to 2017-09-14 06:00:00)"
+ EXP_WIND_DL_C1,2026-10-22T08:31:05,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindLSTM,val,wind_speed (24h past),wind_speed (m/s),24,1,configs/experiments/wind_c1.yaml,42,1290,0.7396,1.1424,0.7362,m/s,COMPLETED,"Best epoch: 15/15, hidden=32, layers=1, lr=0.001, dropout=0.0, runtime=7.3s"
+ EXP_WIND_DL_C2,2026-10-22T08:31:16,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindLSTM,val,wind_speed (24h past),wind_speed (m/s),24,1,configs/experiments/wind_c2.yaml,42,1290,0.7128,1.1374,0.7385,m/s,COMPLETED,"Best epoch: 14/15, hidden=64, layers=1, lr=0.001, dropout=0.1, runtime=11.0s"
+ EXP_WIND_DL_C3,2026-10-22T08:31:26,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindLSTM,val,"wind_speed,wind_direction,temperature,pressure (24h past)",wind_speed (m/s),24,1,configs/experiments/wind_c3.yaml,42,1290,0.7329,1.1373,0.7386,m/s,COMPLETED,"Best epoch: 15/15, hidden=32, layers=1, lr=0.001, dropout=0.0, runtime=8.6s"
+@@ -47,6 +41,12 @@ EXP_DEMAND_DL_D3,2026-10-22T08:32:49,BDG2,demand_forecasting,DemandLSTM,val,dema
+ EXP_DEMAND_DL_D4,2026-10-22T08:33:30,BDG2,demand_forecasting,DemandLSTM,val,demand_kwh (24h past),demand_kwh (kWh),24,1,configs/experiments/demand_d4.yaml,42,2607,2.0175,3.6076,0.8166,kWh,COMPLETED,"Best epoch: 12/15, hidden=64, layers=2, lr=0.0005, dropout=0.2, runtime=40.6s"
+ EXP_WIND_DL_C2_TEST,2026-10-22T08:33:31,NREL_WIND_TOOLKIT,wind_speed_forecasting,WindLSTM,test,wind_speed (24h past),wind_speed (m/s),24,1,configs/experiments/wind_c2.yaml,42,1242,0.5908,0.8216,0.7576,m/s,COMPLETED,Confirmatory test evaluation for EXP_WIND_DL_C2. Period: 2014-11-10 06:30:00 to 2014-12-31 23:30:00
+ EXP_DEMAND_DL_D2_TEST,2026-10-22T08:33:31,BDG2,demand_forecasting,DemandLSTM,test,demand_kwh (24h past),demand_kwh (kWh),24,1,configs/experiments/demand_d2.yaml,42,2561,2.6152,4.0673,0.9234,kWh,COMPLETED,Confirmatory test evaluation for EXP_DEMAND_DL_D2. Period: 2017-09-16 07:00:00 to 2017-12-31 23:00:00
+-EXP_DS_BASE_GRID,2026-10-23T20:30:30,SYNTHETIC_MULTIMODAL_POC,decision_support_feasibility,BaselineGridSupply,test_slice,demand_kwh (240h),served_demand_kwh,0,0,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\decision_support.yaml,42,240,0.0,1414.63,0.0,kWh,COMPLETED,"100% grid supply baseline (0 kW solar, 0 kW wind, 0 kWh battery). Total demand served entirely by grid."
+-EXP_DS_OPTIMIZED_MIX,2026-10-23T20:30:30,SYNTHETIC_MULTIMODAL_POC,decision_support_feasibility,DeterministicEnergyMixOptimizer,test_slice,"solar(150.0kW),wind(0.0kW),batt(200.0kWh)",served_demand_kwh,0,0,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\decision_support.yaml,42,240,0.0,1110.1,0.3832,kWh,COMPLETED,"Cost-optimal mix: 150.0kW Solar, 0.0kW Wind, 200.0kWh Battery. Ren. Pen: 38.32%, Grid red: 38.3%, Unmet: 0.00 kWh"
+-EXP_DS_UNCERTAINTY_STRESS,2026-10-23T20:30:30,SYNTHETIC_MULTIMODAL_POC,decision_support_feasibility,ConformalUncertaintyStressTest,test_slice,conformal_lower_renewable_upper_demand,served_demand_kwh,0,0,C:\Users\shahz\OneDrive\Desktop\DL MiniProject\configs\decision_support.yaml,42,240,0.0,1285.62,0.3222,kWh,COMPLETED,"Conservative stress test under 90% conformal bounds. Ren. Pen: 32.22%, Grid imp: 8765.21 kWh, Unmet: 0.00 kWh"
++EXP_NASA_DL_W1_TEST,2026-10-27T19:55:54,NASA_POWER,irradiance_forecasting,WeatherLSTM,test,"ALLSKY_SFC_SW_DWN,T2M,RH2M,WS10M (24h past)",ALLSKY_SFC_SW_DWN (Wh/m²),24,1,,42,1242,16.2575,30.1767,0.9844,Wh/m^2,COMPLETED,Held-out test set evaluation. Checkpoint from best_model.pt
++EXP_DS_BASE_GRID,2026-10-27T19:58:41,SYNTHETIC_MULTIMODAL_POC,decision_support_feasibility,BaselineGridSupply,test_slice,demand_kwh (240h),served_demand_kwh,0,0,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\decision_support.yaml,42,240,0.0,1414.63,0.0,kWh,COMPLETED,"100% grid supply baseline (0 kW solar, 0 kW wind, 0 kWh battery). Total demand served entirely by grid."
++EXP_DS_OPTIMIZED_MIX,2026-10-27T19:58:41,SYNTHETIC_MULTIMODAL_POC,decision_support_feasibility,DeterministicEnergyMixOptimizer,test_slice,"solar(150.0kW),wind(0.0kW),batt(200.0kWh)",served_demand_kwh,0,0,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\decision_support.yaml,42,240,0.0,1121.14,0.3754,kWh,COMPLETED,"Cost-optimal mix: 150.0kW Solar, 0.0kW Wind, 200.0kWh Battery. Ren. Pen: 37.54%, Grid red: 38.3%, Unmet: 0.00 kWh"
++EXP_DS_UNCERTAINTY_STRESS,2026-10-27T19:58:41,SYNTHETIC_MULTIMODAL_POC,decision_support_feasibility,ConformalUncertaintyStressTest,test_slice,conformal_lower_renewable_upper_demand,served_demand_kwh,0,0,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\decision_support.yaml,42,240,0.0,1285.62,0.3151,kWh,COMPLETED,"Conservative stress test under 90% conformal bounds. Ren. Pen: 31.51%, Grid imp: 8765.21 kWh, Unmet: 0.00 kWh"
++EXP_WIND_CP_80,2026-10-27T19:59:26,NREL_WIND_TOOLKIT,uncertainty_estimation,SplitConformal_WindLSTM,test,wind_speed (24h past),wind_speed (m/s),24,1,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\experiments\wind_c2.yaml,42,1242,2.0877,3.0501,0.8422,m/s,COMPLETED,"Nominal 80% split conformal interval. Empirical cov=84.22%, MPIW=2.0877 m/s, Winkler=3.0501, q=1.0439 m/s. Clipped >= 0 m/s (width red: 0.0002 m/s). Cal N=1290 (2014-09-15 12:30:00 to 2014-11-08 05:30:00)"
++EXP_WIND_CP_90,2026-10-27T19:59:26,NREL_WIND_TOOLKIT,uncertainty_estimation,SplitConformal_WindLSTM,test,wind_speed (24h past),wind_speed (m/s),24,1,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\experiments\wind_c2.yaml,42,1242,3.0602,3.9157,0.9283,m/s,COMPLETED,"Nominal 90% split conformal interval. Empirical cov=92.83%, MPIW=3.0602 m/s, Winkler=3.9157, q=1.5316 m/s. Clipped >= 0 m/s (width red: 0.0031 m/s). Cal N=1290 (2014-09-15 12:30:00 to 2014-11-08 05:30:00)"
++EXP_DEMAND_CP_80,2026-10-27T19:59:28,BDG2,uncertainty_estimation,SplitConformal_DemandLSTM,test,demand_kwh (24h past),demand_kwh (kWh),24,1,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\experiments\demand_d2.yaml,42,2561,4.9561,15.4839,0.6603,kWh,COMPLETED,"Nominal 80% split conformal interval. Empirical cov=66.03%, MPIW=4.9561 kWh, Winkler=15.4839, q=2.4781 kWh. Clipped >= 0 kWh (width red: 0.0000 kWh). Cal N=2607 (2017-05-28 16:00:00 to 2017-09-14 06:00:00)"
++EXP_DEMAND_CP_90,2026-10-27T19:59:28,BDG2,uncertainty_estimation,SplitConformal_DemandLSTM,test,demand_kwh (24h past),demand_kwh (kWh),24,1,C:\Users\shahz\Downloads\DL-MiniProject-Fixed-20261027\configs\experiments\demand_d2.yaml,42,2561,9.5254,20.6045,0.8547,kWh,COMPLETED,"Nominal 90% split conformal interval. Empirical cov=85.47%, MPIW=9.5254 kWh, Winkler=20.6045, q=4.7627 kWh. Clipped >= 0 kWh (width red: 0.0000 kWh). Cal N=2607 (2017-05-28 16:00:00 to 2017-09-14 06:00:00)"
++EXP_SOLAR_DL_S3_TEST,2026-10-27T20:01:56,SKIPP'D,solar_nowcasting,ResNet18_fine_tune,test,single_sky_image_64x64,pv (kW),0,0,,42,14003,2.3008,3.3736,0.8052,kW,COMPLETED,Held-out test set evaluation. Checkpoint from best_model.pt
+diff --git a/reports/stage3_forecasting_summary.md b/reports/stage3_forecasting_summary.md
+index d202695..21836de 100644
+--- a/reports/stage3_forecasting_summary.md
++++ b/reports/stage3_forecasting_summary.md
+@@ -56,8 +56,8 @@ With Stage 3 complete, all four planned core forecasting models have been implem
+ 
+ | Model ID | Domain | Architecture | Training Partition | Test Partition | Primary Metric (Test) | Baseline Comparison |
+ |---|---|---|---|---|---|---|
+-| **Model A** | Solar PV Nowcasting | ResNet-18 (Fine-tuned) | 12,818 samples | 13,998 samples | **MAE: 1.13 kW** | Beaten Climatology (1.88 kW) |
+-| **Model B** | Solar Irradiance | WeatherLSTM (h=64) | 6,108 windows | 1,290 windows | **MAE: 18.57 Wh/m²** | Beaten Persistence (61.16 Wh/m²) |
++| **Model A** | Solar PV Nowcasting | ResNet-18 (Fine-tuned) | 12,818 samples | 14,003 samples | **MAE: 2.3008 kW** | Test result reproduced; baseline comparison not independently re-evaluated |
++| **Model B** | Solar Irradiance | WeatherLSTM W1 (h=32, L=1) | 6,108 windows | 1,242 windows | **MAE: 16.2575 Wh/m²** | Test result reproduced; baseline comparison not independently re-evaluated |
+ | **Model C** | Wind Speed & Power | WindLSTM (h=64) | 6,108 windows | 1,242 windows | **MAE: 0.59 m/s (47.89 kW)** | Beaten Persistence (0.60 m/s / 50.22 kW) |
+ | **Model D** | Building Demand | DemandLSTM (h=64) | 12,256 windows | 2,561 windows | **RMSE: 4.07 kWh (R²: 0.9234)** | Beaten Persistence on RMSE/R² |
+ 
+@@ -66,6 +66,6 @@ With Stage 3 complete, all four planned core forecasting models have been implem
+ ## 4. Readiness for Stage 4: Uncertainty Estimation
+ 
+ Both Model C (`WindLSTM`) and Model D (`DemandLSTM`) checkpoints are frozen and verified. They are fully prepared for Stage 4:
+-1. **Conformal Prediction**: Distribution-free coverage guarantees for prediction intervals ($1 - \alpha$).
++1. **Conformal Prediction**: Finite-sample marginal coverage is conditional on exchangeability; demand test coverage is below nominal under observed seasonal shift.
+ 2. **Quantile Regression / Pinball Loss**: Directly estimating $q_{0.10}, q_{0.50}, q_{0.90}$ predictive intervals.
+ 3. **Parametric Gaussian / Student-t Residual Modeling**: Deriving variance $\hat{\sigma}^2(x)$ for downstream stochastic optimization in the Decision Support system.
+diff --git a/reports/stage5_decision_support_report.md b/reports/stage5_decision_support_report.md
+index c12ee41..e079e4c 100644
+--- a/reports/stage5_decision_support_report.md
++++ b/reports/stage5_decision_support_report.md
+@@ -21,7 +21,7 @@ Stage 5 completes the final component of the project framework: **Model E (Uncer
+ | **3. Separation of Multi-Location Datasets** | Distinct geographical origins (Stanford nowcasting, Mumbai solar irradiance, Gujarat wind speed, Orlando electricity demand) are preserved and explicitly distinguished. Datasets were **never merged into a single empirical time series**. | VERIFIED |
+ | **4. Physical Conversion Distinction** | Irradiance in $\text{Wh/m}^2$ is converted to electrical energy via a documented Standard Test Condition (STC) derate model. Wind power is converted via a generic 2 MW turbine power curve and explicitly designated as an **illustrative engineering proxy**, not measured generation. | VERIFIED |
+ | **5. Physical Energy Conservation** | Energy conservation holds strictly at every time step ($|\text{residual}| \le 10^{-6}\text{ kWh}$) across solar, wind, battery, grid, served demand, curtailment, and unmet demand. | VERIFIED |
+-| **6. Deterministic Optimization** | Discrete candidate grid evaluation ($6 \times 5 \times 4 = 120$ combinations) guarantees the exact global optimum over the search space with 100% reproducible bitwise output. | VERIFIED |
++| **6. Deterministic Optimization** | Discrete candidate grid evaluation ($6 \times 5 \times 4 = 120$ combinations) guarantees the exact global optimum over the search space with deterministic evaluation of every configured candidate. | VERIFIED |
+ | **7. Conformal Uncertainty Sensitivity** | Evaluated under Conservative Stress ($R_{\text{low}}, D_{\text{upp}}$), Central ($R_{\text{cent}}, D_{\text{cent}}$), and Favorable ($R_{\text{upp}}, D_{\text{low}}$) scenarios using calibrated 90% conformal quantiles ($q_{\text{wind}}=1.5316\text{ m/s}$, $q_{\text{demand}}=4.7627\text{ kWh}$). | VERIFIED |
+ | **8. Marginal vs Joint Uncertainty Caveat** | Explicitly declared that separate 90% marginal conformal intervals do not guarantee 90% simultaneous joint coverage without Bonferroni or copula adjustments. | VERIFIED |
+ | **9. Test Set Leakage Prevention** | Conformal calibration parameters ($q_{80}, q_{90}$) were computed strictly on dedicated calibration partitions. Test residuals were never used to tune optimizer parameters or scenario selection. | VERIFIED |
+@@ -114,26 +114,26 @@ Parameters (illustrative benchmark proxies):
+ - $c_{\text{solar}} = \$800/\text{kW}$, $c_{\text{wind}} = \$1200/\text{kW}$, $c_{\text{batt}} = \$250/\text{kWh}$
+ - $c_{\text{grid}} = \$0.12/\text{kWh}$, $c_{\text{unmet}} = \$2.00/\text{kWh}$ (Value of Lost Load), $c_{\text{curtail}} = \$0.01/\text{kWh}$
+ 
+-### 4.3 Optimization Results & Baseline Comparison
++Battery carry-in discharge is valued at the configured grid-energy rate in the objective. Initial/final SOC and terminal SOC delta are reported; the current horizon does not enforce cyclic terminal SOC, so results remain short-slice comparisons rather than a repeatable daily dispatch guarantee.\n\n### 4.3 Optimization Results & Baseline Comparison
+ 
+ The candidate configurations were evaluated over a 240-hour (10-day) representative test slice ($N=240$, Total Demand = $11,788.58\text{ kWh}$, Peak Demand = $90.34\text{ kW}$, Grid Import Limit = $100.0\text{ kW}$).
+ 
+ | Configuration | Solar ($C_{\text{pv}}$) | Wind ($C_{\text{wind}}$) | Battery ($C_{\text{bess}}$) | Renewable Penetration | Grid Import | Grid Reduction | Total Cost | Unmet Demand | Loss of Load |
+ |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+ | **100% Grid Baseline** | 0.0 kW | 0.0 kW | 0.0 kWh | **0.00%** | 11,788.58 kWh | 0.0% | $1,414.63 | 0.00 kWh | 0.0% (0 h) |
+-| **Cost-Optimal Mix** | 150.0 kW | 0.0 kW | 200.0 kWh | **38.32%** | 7,271.02 kWh | **-38.32%** | **$1,110.10** | 0.00 kWh | 0.0% (0 h) |
+-| **Autonomy-Optimal Mix** | 150.0 kW | 300.0 kW | 200.0 kWh | **57.11%** | 5,056.18 kWh | **-57.11%** | $1,379.30 | 0.00 kWh | 0.0% (0 h) |
++| **Cost-Optimal Mix** | 150.0 kW | 0.0 kW | 200.0 kWh | **37.54%** | 7,271.02 kWh | **38.32%** | **$1,121.14** | 0.00 kWh | 0.0% (0 h) |
++| **Autonomy-Optimal Mix** | 150.0 kW | 300.0 kW | 200.0 kWh | **56.33%** | 5,056.18 kWh | **57.11%** | $1,390.33 | 0.00 kWh | 0.0% (0 h) |
+ 
+ #### Key Insights:
+-1. **Economic Viability**: The Cost-Optimal Mix achieves **38.32% clean energy penetration** while reducing total energy expenditure from $1,414.63 to $1,110.10—a net savings of **$304.53 (21.5% cost reduction)** over the 10-day evaluation slice.
+-2. **Autonomy Frontier**: The Autonomy-Optimal configuration achieves **57.11% renewable penetration** and cuts grid import by **6,732.40 kWh (57.11%)**, while remaining cheaper than the pure grid baseline ($1,379.30 vs $1,414.63).
++1. **Economic Viability**: The Cost-Optimal Mix achieves **37.54% renewable penetration** while reducing total modeled cost from $1,414.63 to $1,121.14—a modeled difference of **$293.49 (20.7% cost reduction)** over the 10-day evaluation slice.
++2. **Autonomy Frontier**: The Autonomy-Optimal configuration achieves **56.33% renewable penetration** and cuts grid import by **6,732.40 kWh (57.11%)**, while remaining below the grid-only modeled cost ($1,390.33 vs $1,414.63).
+ 3. **Storage Role**: Solar generation without storage leaves evening peaks unserved. The 200 kWh battery absorbs mid-day solar surplus and discharges 692.07 kWh during high-demand nighttime hours.
+ 
+ ---
+ 
+ ## 5. Conformal Uncertainty Feasibility Analysis
+ 
+-To evaluate resilience under real-world forecasting errors and distribution shift, the Cost-Optimal Mix was subjected to a rigorous 3-scenario conformal uncertainty stress test using 90% calibrated intervals:
++To evaluate sensitivity to forecast bounds, the Cost-Optimal Mix was simulated under three deterministic scenarios derived from 90% marginal conformal quantiles. Because demand is undercovered on the held-out test and the profiles are synthetic, these are not calibrated probability guarantees:
+ - **Conservative Stress Scenario**: Worst-case combination of upper-bound electricity demand ($D_{\text{upp}} = \hat{D} + q_D$) and lower-bound renewable resources ($v_{\text{low}} = \max(0, \hat{v} - q_W)$).
+ - **Central Expected Scenario**: Point predictions ($\hat{D}, \hat{v}, \hat{G}$).
+ - **Favorable Optimistic Scenario**: Lower-bound electricity demand ($D_{\text{low}} = \max(0, \hat{D} - q_D)$) and upper-bound renewable resources.
+@@ -142,19 +142,19 @@ To evaluate resilience under real-world forecasting errors and distribution shif
+ 
+ | Scenario | Total Demand | Available Renewable | Grid Import | Curtailment | Unmet Demand | Renewable Penetration | Loss of Load |
+ |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+-| **Conservative (Stress)** | 12,931.63 kWh | 4,299.89 kWh | 8,765.21 kWh | 92.12 kWh | **0.00 kWh** | **32.22%** | **0.0% (0 h)** |
+-| **Central (Expected)** | 11,788.58 kWh | 5,058.70 kWh | 7,271.02 kWh | 470.15 kWh | **0.00 kWh** | **38.32%** | **0.0% (0 h)** |
+-| **Favorable (Optimistic)** | 10,645.53 kWh | 5,817.50 kWh | 5,917.20 kWh | 978.49 kWh | **0.00 kWh** | **44.42%** | **0.0% (0 h)** |
++| **Conservative (Stress)** | 12,931.63 kWh | 4,299.89 kWh | 8,765.21 kWh | 92.12 kWh | **0.00 kWh** | **31.51%** | **0.0% (0 h)** |
++| **Central (Expected)** | 11,788.58 kWh | 5,058.70 kWh | 7,271.02 kWh | 470.15 kWh | **0.00 kWh** | **37.54%** | **0.0% (0 h) |
++| **Favorable (Optimistic)** | 10,645.53 kWh | 5,817.50 kWh | 5,917.20 kWh | 978.49 kWh | **0.00 kWh** | **43.55%** | **0.0% (0 h)** |
+ 
+ ### Critical Scientific Findings:
+ 1. **Zero Unmet Demand Resilience**: Even under conservative joint stress where demand surges by +9.7% and available renewable generation declines by -15.0%, unmet demand remains **0.00 kWh** across all 240 hours because the 100 kW grid interconnection smoothly compensates for renewable deficits.
+-2. **Penetration Sensitivity Band**: Renewable penetration spans a stable corridor from **32.22%** (Stress) to **38.32%** (Expected) to **44.42%** (Optimistic).
++2. **Penetration Sensitivity Band**: Renewable penetration spans a stable corridor from **31.51%** (Stress) to **37.54%** (Expected) to **43.55%** (Optimistic).
+ 3. **Curtailment Dynamics**: Under favorable solar generation, curtailment increases to 978.49 kWh, highlighting that additional storage capacity would be required to capture peak surplus.
+ 
+ ### Statistical Disclosure on Joint Coverage
+ - The conformal quantiles ($q_W = 1.5316\text{ m/s}$, $q_D = 4.7627\text{ kWh}$) provide $90\%$ **marginal** coverage on their respective calibration distributions.
+ - **Do not interpret the stress scenario as a calibrated 90% joint confidence region**: By Bonferroni's inequality, separate marginal $1 - \alpha$ intervals guarantee joint coverage of at least $1 - 2\alpha = 80\%$, not $90\%$.
+-- Furthermore, as established in Stage 4, seasonal distribution shift in Florida building demand led to empirical test undercoverage ($82.16\%$ vs nominal $90\%$). The stress scenario deliberately tests the physical system against these distribution excursions.
++- Furthermore, as established in Stage 4, seasonal distribution shift in Florida building demand led to empirical test undercoverage ($85.47\%$ vs nominal $90\%$). The stress scenario deliberately tests the physical system against these distribution excursions.
+ 
+ ---
+ 
+diff --git a/reports/tables/decision_support_summary.json b/reports/tables/decision_support_summary.json
+index 08c819c..441d134 100644
+--- a/reports/tables/decision_support_summary.json
++++ b/reports/tables/decision_support_summary.json
+@@ -25,7 +25,13 @@
+       "served_demand_kwh": 11788.5773,
+       "renewable_used_kwh": 0.0,
+       "battery_discharge_kwh": 0.0,
++      "renewable_origin_battery_discharge_kwh": 0.0,
++      "initial_soc_carry_in_discharge_kwh": 0.0,
+       "battery_charge_kwh": 0.0,
++      "initial_soc_kwh": 0.0,
++      "final_soc_kwh": 0.0,
++      "terminal_soc_delta_kwh": 0.0,
++      "battery_soc_balance_residual_kwh": 0.0,
+       "grid_import_kwh": 11788.5773,
+       "unmet_demand_kwh": 0.0,
+       "curtailment_kwh": 0.0,
+@@ -41,6 +47,7 @@
+     "costs": {
+       "capex": 0.0,
+       "opex": 1414.63,
++      "carry_in_energy_cost": 0.0,
+       "total_cost": 1414.63
+     }
+   },
+@@ -57,11 +64,17 @@
+       "served_demand_kwh": 11788.5773,
+       "renewable_used_kwh": 3647.2193,
+       "battery_discharge_kwh": 870.3422,
+-      "battery_charge_kwh": 941.3305,
++      "renewable_origin_battery_discharge_kwh": 778.3422,
++      "initial_soc_carry_in_discharge_kwh": 92.0,
++      "battery_charge_kwh": 941.3306,
++      "initial_soc_kwh": 100.0,
++      "final_soc_kwh": 20.0,
++      "terminal_soc_delta_kwh": -80.0,
++      "battery_soc_balance_residual_kwh": 0.0,
+       "grid_import_kwh": 7271.0158,
+       "unmet_demand_kwh": 0.0,
+       "curtailment_kwh": 470.1475,
+-      "renewable_penetration": 0.3832,
++      "renewable_penetration": 0.3754,
+       "direct_renewable_share": 0.3094,
+       "grid_dependence_fraction": 0.6168,
+       "loss_of_load_fraction": 0.0,
+@@ -72,8 +85,9 @@
+     },
+     "costs": {
+       "capex": 232.88,
+-      "opex": 877.22,
+-      "total_cost": 1110.1
++      "opex": 888.26,
++      "carry_in_energy_cost": 11.04,
++      "total_cost": 1121.14
+     },
+     "comparison_vs_baseline": {
+       "baseline_grid_import_kwh": 11788.5773,
+@@ -83,10 +97,10 @@
+       "baseline_unmet_kwh": 0.0,
+       "optimized_unmet_kwh": 0.0,
+       "baseline_total_cost": 1414.63,
+-      "optimized_total_cost": 1110.1,
+-      "cost_diff": -304.53,
+-      "cost_savings_pct": 21.53,
+-      "renewable_penetration_achieved": 0.3832
++      "optimized_total_cost": 1121.14,
++      "cost_diff": -293.49,
++      "cost_savings_pct": 20.75,
++      "renewable_penetration_achieved": 0.3754
+     }
+   },
+   "grid_optimal_configuration": {
+@@ -102,11 +116,17 @@
+       "served_demand_kwh": 11788.5773,
+       "renewable_used_kwh": 6040.3265,
+       "battery_discharge_kwh": 692.069,
++      "renewable_origin_battery_discharge_kwh": 600.0714,
++      "initial_soc_carry_in_discharge_kwh": 91.9975,
+       "battery_charge_kwh": 730.7053,
++      "initial_soc_kwh": 100.0,
++      "final_soc_kwh": 20.0,
++      "terminal_soc_delta_kwh": -80.0,
++      "battery_soc_balance_residual_kwh": 0.0,
+       "grid_import_kwh": 5056.1818,
+       "unmet_demand_kwh": 0.0,
+       "curtailment_kwh": 4652.5958,
+-      "renewable_penetration": 0.5711,
++      "renewable_penetration": 0.5633,
+       "direct_renewable_share": 0.5124,
+       "grid_dependence_fraction": 0.4289,
+       "loss_of_load_fraction": 0.0,
+@@ -117,8 +137,9 @@
+     },
+     "costs": {
+       "capex": 726.03,
+-      "opex": 653.27,
+-      "total_cost": 1379.3
++      "opex": 664.31,
++      "carry_in_energy_cost": 11.04,
++      "total_cost": 1390.33
+     },
+     "comparison_vs_baseline": {
+       "baseline_grid_import_kwh": 11788.5773,
+@@ -128,10 +149,10 @@
+       "baseline_unmet_kwh": 0.0,
+       "optimized_unmet_kwh": 0.0,
+       "baseline_total_cost": 1414.63,
+-      "optimized_total_cost": 1379.3,
+-      "cost_diff": -35.33,
+-      "cost_savings_pct": 2.5,
+-      "renewable_penetration_achieved": 0.5711
++      "optimized_total_cost": 1390.33,
++      "cost_diff": -24.3,
++      "cost_savings_pct": 1.72,
++      "renewable_penetration_achieved": 0.5633
+     }
+   },
+   "uncertainty_stress_evaluation": {
+@@ -139,12 +160,12 @@
+     "scenarios": [
+       {
+         "scenario": "Conservative (Stress)",
+-        "demand_kwh": 12931.6278,
++        "demand_kwh": 12931.6279,
+         "renewable_kwh": 4299.8928,
+-        "grid_import_kwh": 8765.2138,
++        "grid_import_kwh": 8765.2139,
+         "unmet_demand_kwh": 0.0,
+         "curtailment_kwh": 92.1233,
+-        "renewable_penetration": 0.3222,
++        "renewable_penetration": 0.3151,
+         "loss_of_load_fraction": 0.0,
+         "loss_of_load_hours": 0
+       },
+@@ -155,18 +176,18 @@
+         "grid_import_kwh": 7271.0158,
+         "unmet_demand_kwh": 0.0,
+         "curtailment_kwh": 470.1475,
+-        "renewable_penetration": 0.3832,
++        "renewable_penetration": 0.3754,
+         "loss_of_load_fraction": 0.0,
+         "loss_of_load_hours": 0
+       },
+       {
+         "scenario": "Favorable (Optimistic)",
+-        "demand_kwh": 10645.5267,
++        "demand_kwh": 10645.5268,
+         "renewable_kwh": 5817.502,
+         "grid_import_kwh": 5917.1998,
+         "unmet_demand_kwh": 0.0,
+         "curtailment_kwh": 978.4922,
+-        "renewable_penetration": 0.4442,
++        "renewable_penetration": 0.4355,
+         "loss_of_load_fraction": 0.0,
+         "loss_of_load_hours": 0
+       }
+diff --git a/reports/tables/energy_feasibility_scenarios.csv b/reports/tables/energy_feasibility_scenarios.csv
+index a73cc87..898270c 100644
+--- a/reports/tables/energy_feasibility_scenarios.csv
++++ b/reports/tables/energy_feasibility_scenarios.csv
+@@ -1,121 +1,121 @@
+ solar_kw,wind_kw,battery_kwh,renewable_penetration,grid_import_kwh,unmet_demand_kwh,curtailment_kwh,loss_of_load_fraction,loss_of_load_hours,capex,opex,total_cost,is_feasible,score
+ 0.0,0.0,0.0,0.0,11788.5773,0.0,0.0,0.0,0,0.0,1414.63,1414.63,True,1414.63
+-0.0,0.0,50.0,0.0016,11770.1773,0.0,0.0,0.0,0,17.12,1412.42,1429.54,True,1429.54
+-0.0,0.0,100.0,0.0031,11751.7773,0.0,0.0,0.0,0,34.25,1410.21,1444.46,True,1444.46
+-0.0,0.0,200.0,0.0062,11714.9773,0.0,0.0,0.0,0,68.49,1405.8,1474.29,True,1474.29
++0.0,0.0,50.0,0.0,11770.1773,0.0,0.0,0.0,0,17.12,1414.63,1431.75,True,1431.75
++0.0,0.0,100.0,0.0,11751.7773,0.0,0.0,0.0,0,34.25,1414.63,1448.88,True,1448.88
++0.0,0.0,200.0,0.0,11714.9773,0.0,0.0,0.0,0,68.49,1414.63,1483.12,True,1483.12
+ 0.0,50.0,0.0,0.09,10727.7556,0.0,0.0,0.0,0,82.19,1287.33,1369.52,True,1369.52
+-0.0,50.0,50.0,0.0915,10709.3556,0.0,0.0,0.0,0,99.32,1285.12,1384.44,True,1384.44
+-0.0,50.0,100.0,0.0931,10690.9556,0.0,0.0,0.0,0,116.44,1282.91,1399.35,True,1399.35
+-0.0,50.0,200.0,0.0962,10654.1556,0.0,0.0,0.0,0,150.68,1278.5,1429.18,True,1429.18
++0.0,50.0,50.0,0.09,10709.3556,0.0,0.0,0.0,0,99.32,1287.33,1386.65,True,1386.65
++0.0,50.0,100.0,0.09,10690.9556,0.0,0.0,0.0,0,116.44,1287.33,1403.77,True,1403.77
++0.0,50.0,200.0,0.09,10654.1556,0.0,0.0,0.0,0,150.68,1287.33,1438.02,True,1438.02
+ 0.0,100.0,0.0,0.1715,9766.5997,0.0,99.6658,0.0,0,164.38,1172.99,1337.37,True,1337.37
+-0.0,100.0,50.0,0.1802,9663.8425,0.0,0.0,0.0,0,181.51,1159.66,1341.17,True,1341.17
+-0.0,100.0,100.0,0.1818,9645.4425,0.0,0.0,0.0,0,198.63,1157.45,1356.08,True,1356.08
+-0.0,100.0,200.0,0.1849,9608.6425,0.0,0.0,0.0,0,232.88,1153.04,1385.91,True,1385.91
+-0.0,200.0,0.0,0.2719,8583.7282,0.0,1038.4377,0.0,0,328.77,1040.43,1369.2,True,1369.2
+-0.0,200.0,50.0,0.2938,8325.4008,0.0,754.9696,0.0,0,345.89,1006.6,1352.49,True,1352.49
+-0.0,200.0,100.0,0.3099,8135.2678,0.0,552.0715,0.0,0,363.01,981.75,1344.77,True,1344.77
+-0.0,200.0,200.0,0.325,7957.3414,0.0,385.3342,0.0,0,397.26,958.73,1355.99,True,1355.99
++0.0,100.0,50.0,0.1783,9663.8426,0.0,0.0,0.0,0,181.51,1162.42,1343.93,True,1343.93
++0.0,100.0,100.0,0.1779,9645.4426,0.0,0.0,0.0,0,198.63,1162.97,1361.6,True,1361.6
++0.0,100.0,200.0,0.1772,9608.6426,0.0,0.0,0.0,0,232.88,1163.99,1396.86,True,1396.86
++0.0,200.0,0.0,0.2719,8583.7283,0.0,1038.4377,0.0,0,328.77,1040.43,1369.2,True,1369.2
++0.0,200.0,50.0,0.2918,8325.4009,0.0,754.9696,0.0,0,345.89,1009.36,1355.25,True,1355.25
++0.0,200.0,100.0,0.306,8135.2679,0.0,552.0715,0.0,0,363.01,987.27,1350.29,True,1350.29
++0.0,200.0,200.0,0.3172,7957.3415,0.0,385.3342,0.0,0,397.26,969.77,1367.03,True,1367.03
+ 0.0,300.0,0.0,0.3316,7879.8015,0.0,2456.1544,0.0,0,493.15,970.14,1463.29,True,1463.29
+-0.0,300.0,50.0,0.3499,7664.195,0.0,2223.16,0.0,0,510.27,941.93,1452.21,True,1452.21
+-0.0,300.0,100.0,0.3567,7583.4822,0.0,2149.5389,0.0,0,527.4,931.51,1458.91,True,1458.91
+-0.0,300.0,200.0,0.3633,7505.2822,0.0,2100.6259,0.0,0,561.64,921.64,1483.28,True,1483.28
+-25.0,0.0,0.0,0.0715,10945.461,0.0,0.0,0.0,0,27.4,1313.46,1340.85,True,1340.85
+-25.0,0.0,50.0,0.0731,10927.061,0.0,0.0,0.0,0,44.52,1311.25,1355.77,True,1355.77
+-25.0,0.0,100.0,0.0746,10908.661,0.0,0.0,0.0,0,61.64,1309.04,1370.68,True,1370.68
+-25.0,0.0,200.0,0.0778,10871.861,0.0,0.0,0.0,0,95.89,1304.62,1400.51,True,1400.51
+-25.0,50.0,0.0,0.1593,9910.276,0.0,25.6367,0.0,0,109.59,1189.49,1299.08,True,1299.08
+-25.0,50.0,50.0,0.1627,9870.1771,0.0,0.0,0.0,0,126.71,1184.42,1311.13,True,1311.13
+-25.0,50.0,100.0,0.1643,9851.7771,0.0,0.0,0.0,0,143.84,1182.21,1326.05,True,1326.05
+-25.0,50.0,200.0,0.1674,9814.9771,0.0,0.0,0.0,0,178.08,1177.8,1355.88,True,1355.88
+-25.0,100.0,0.0,0.2244,9142.9318,0.0,319.1142,0.0,0,191.78,1100.34,1292.12,True,1292.12
+-25.0,100.0,50.0,0.2414,8942.62,0.0,104.1901,0.0,0,208.9,1074.16,1283.06,True,1283.06
+-25.0,100.0,100.0,0.2497,8845.0218,0.0,10.6193,0.0,0,226.03,1061.51,1287.54,True,1287.54
+-25.0,100.0,200.0,0.2536,8799.2336,0.0,0.0,0.0,0,260.27,1055.91,1316.18,True,1316.18
+-25.0,200.0,0.0,0.3115,8116.8597,0.0,1414.6855,0.0,0,356.16,988.17,1344.33,True,1344.33
+-25.0,200.0,50.0,0.3327,7866.9927,0.0,1141.2132,0.0,0,373.29,955.45,1328.74,True,1328.74
+-25.0,200.0,100.0,0.346,7709.5476,0.0,976.9349,0.0,0,390.41,934.92,1325.33,True,1325.33
+-25.0,200.0,200.0,0.3609,7534.515,0.0,813.6166,0.0,0,424.66,912.28,1336.94,True,1336.94
+-25.0,300.0,0.0,0.3682,7447.9716,0.0,2867.4408,0.0,0,520.55,922.43,1442.98,True,1442.98
+-25.0,300.0,50.0,0.3854,7244.7001,0.0,2649.0198,0.0,0,537.67,895.85,1433.53,True,1433.53
+-25.0,300.0,100.0,0.3921,7165.963,0.0,2577.7331,0.0,0,554.79,885.69,1440.49,True,1440.49
+-25.0,300.0,200.0,0.3988,7087.763,0.0,2528.8201,0.0,0,589.04,875.82,1464.86,True,1464.86
+-50.0,0.0,0.0,0.1405,10132.7573,0.0,30.4125,0.0,0,54.79,1216.24,1271.03,True,1271.03
+-50.0,0.0,50.0,0.1442,10088.6162,0.0,0.0,0.0,0,71.92,1210.63,1282.55,True,1282.55
+-50.0,0.0,100.0,0.1458,10070.2162,0.0,0.0,0.0,0,89.04,1208.43,1297.47,True,1297.47
+-50.0,0.0,200.0,0.1489,10033.4162,0.0,0.0,0.0,0,123.29,1204.01,1327.3,True,1327.3
+-50.0,50.0,0.0,0.2107,9304.2877,0.0,262.7646,0.0,0,136.99,1119.14,1256.13,True,1256.13
+-50.0,50.0,50.0,0.2267,9116.5631,0.0,62.7119,0.0,0,154.11,1094.61,1248.72,True,1248.72
+-50.0,50.0,100.0,0.2327,9045.0837,0.0,0.0,0.0,0,171.23,1085.41,1256.64,True,1256.64
+-50.0,50.0,200.0,0.2358,9008.2837,0.0,0.0,0.0,0,205.48,1080.99,1286.47,True,1286.47
++0.0,300.0,50.0,0.3479,7664.195,0.0,2223.1599,0.0,0,510.27,944.69,1454.97,True,1454.97
++0.0,300.0,100.0,0.3528,7583.4822,0.0,2149.5389,0.0,0,527.4,937.03,1464.43,True,1464.43
++0.0,300.0,200.0,0.3557,7505.2822,0.0,2100.6259,0.0,0,561.64,932.47,1494.12,True,1494.12
++25.0,0.0,0.0,0.0715,10945.4611,0.0,0.0,0.0,0,27.4,1313.46,1340.85,True,1340.85
++25.0,0.0,50.0,0.0715,10927.0611,0.0,0.0,0.0,0,44.52,1313.46,1357.98,True,1357.98
++25.0,0.0,100.0,0.0715,10908.6611,0.0,0.0,0.0,0,61.64,1313.46,1375.1,True,1375.1
++25.0,0.0,200.0,0.0715,10871.8611,0.0,0.0,0.0,0,95.89,1313.46,1409.35,True,1409.35
++25.0,50.0,0.0,0.1593,9910.2761,0.0,25.6367,0.0,0,109.59,1189.49,1299.08,True,1299.08
++25.0,50.0,50.0,0.1608,9870.1772,0.0,0.0,0.0,0,126.71,1187.16,1313.87,True,1313.87
++25.0,50.0,100.0,0.1605,9851.7772,0.0,0.0,0.0,0,143.84,1187.56,1331.39,True,1331.39
++25.0,50.0,200.0,0.1602,9814.9772,0.0,0.0,0.0,0,178.08,1188.04,1366.13,True,1366.13
++25.0,100.0,0.0,0.2244,9142.9319,0.0,319.1142,0.0,0,191.78,1100.34,1292.12,True,1292.12
++25.0,100.0,50.0,0.2395,8942.6201,0.0,104.1901,0.0,0,208.9,1076.92,1285.82,True,1285.82
++25.0,100.0,100.0,0.2458,8845.0218,0.0,10.6193,0.0,0,226.03,1067.03,1293.06,True,1293.06
++25.0,100.0,200.0,0.2458,8799.2336,0.0,0.0,0.0,0,260.27,1066.95,1327.22,True,1327.22
++25.0,200.0,0.0,0.3115,8116.8598,0.0,1414.6854,0.0,0,356.16,988.17,1344.33,True,1344.33
++25.0,200.0,50.0,0.3307,7866.9928,0.0,1141.2131,0.0,0,373.29,958.21,1331.5,True,1331.5
++25.0,200.0,100.0,0.3421,7709.5477,0.0,976.9349,0.0,0,390.41,940.43,1330.85,True,1330.85
++25.0,200.0,200.0,0.3531,7534.515,0.0,813.6165,0.0,0,424.66,923.31,1347.96,True,1347.96
++25.0,300.0,0.0,0.3682,7447.9716,0.0,2867.4407,0.0,0,520.55,922.43,1442.98,True,1442.98
++25.0,300.0,50.0,0.3835,7244.7002,0.0,2649.0198,0.0,0,537.67,898.61,1436.29,True,1436.29
++25.0,300.0,100.0,0.3882,7165.9631,0.0,2577.7331,0.0,0,554.79,891.21,1446.0,True,1446.0
++25.0,300.0,200.0,0.3911,7087.7631,0.0,2528.82,0.0,0,589.04,886.68,1475.72,True,1475.72
++50.0,0.0,0.0,0.1405,10132.7574,0.0,30.4125,0.0,0,54.79,1216.24,1271.03,True,1271.03
++50.0,0.0,50.0,0.1423,10088.6162,0.0,0.0,0.0,0,71.92,1213.37,1285.28,True,1285.28
++50.0,0.0,100.0,0.142,10070.2162,0.0,0.0,0.0,0,89.04,1213.78,1302.82,True,1302.82
++50.0,0.0,200.0,0.1416,10033.4162,0.0,0.0,0.0,0,123.29,1214.32,1337.6,True,1337.6
++50.0,50.0,0.0,0.2107,9304.2878,0.0,262.7646,0.0,0,136.99,1119.14,1256.13,True,1256.13
++50.0,50.0,50.0,0.2247,9116.5632,0.0,62.712,0.0,0,154.11,1097.37,1251.48,True,1251.48
++50.0,50.0,100.0,0.2288,9045.0838,0.0,0.0,0.0,0,171.23,1090.93,1262.16,True,1262.16
++50.0,50.0,200.0,0.228,9008.2838,0.0,0.0,0.0,0,205.48,1092.03,1297.51,True,1297.51
+ 50.0,100.0,0.0,0.2655,8658.1941,0.0,677.4927,0.0,0,219.18,1045.76,1264.94,True,1264.94
+-50.0,100.0,50.0,0.2838,8442.5654,0.0,444.472,0.0,0,236.3,1017.55,1253.85,True,1253.85
+-50.0,100.0,100.0,0.3013,8236.7627,0.0,223.0605,0.0,0,253.42,990.64,1244.07,True,1244.07
+-50.0,100.0,200.0,0.3201,8015.5602,0.0,5.1937,0.0,0,287.67,961.92,1249.59,True,1249.59
++50.0,100.0,50.0,0.2819,8442.5654,0.0,444.472,0.0,0,236.3,1020.31,1256.61,True,1256.61
++50.0,100.0,100.0,0.2974,8236.7627,0.0,223.0605,0.0,0,253.42,996.16,1249.59,True,1249.59
++50.0,100.0,200.0,0.3123,8015.5603,0.0,5.1937,0.0,0,287.67,972.96,1260.63,True,1260.63
+ 50.0,200.0,0.0,0.3484,7681.3764,0.0,1822.3184,0.0,0,383.56,939.99,1323.55,True,1323.55
+-50.0,200.0,50.0,0.3689,7439.7831,0.0,1558.6212,0.0,0,400.68,908.36,1309.05,True,1309.05
+-50.0,200.0,100.0,0.3821,7284.1745,0.0,1396.5128,0.0,0,417.81,888.07,1305.87,True,1305.87
+-50.0,200.0,200.0,0.3967,7111.6885,0.0,1236.2033,0.0,0,452.05,865.76,1317.82,True,1317.82
++50.0,200.0,50.0,0.3669,7439.7832,0.0,1558.6212,0.0,0,400.68,911.12,1311.81,True,1311.81
++50.0,200.0,100.0,0.3782,7284.1746,0.0,1396.5127,0.0,0,417.81,893.59,1311.39,True,1311.39
++50.0,200.0,200.0,0.3889,7111.6886,0.0,1236.2032,0.0,0,452.05,876.79,1328.85,True,1328.85
+ 50.0,300.0,0.0,0.4022,7046.9635,0.0,3309.5489,0.0,0,547.95,878.73,1426.68,True,1426.68
+-50.0,300.0,50.0,0.4208,6827.3956,0.0,3071.8741,0.0,0,565.07,850.01,1415.07,True,1415.07
+-50.0,300.0,100.0,0.4274,6750.6342,0.0,3002.9217,0.0,0,582.19,840.11,1422.3,True,1422.3
+-50.0,300.0,200.0,0.434,6672.4342,0.0,2954.0087,0.0,0,616.44,830.23,1446.67,True,1446.67
++50.0,300.0,50.0,0.4189,6827.3956,0.0,3071.8741,0.0,0,565.07,852.77,1417.83,True,1417.83
++50.0,300.0,100.0,0.4235,6750.6343,0.0,3002.9217,0.0,0,582.19,845.62,1427.82,True,1427.82
++50.0,300.0,200.0,0.4263,6672.4343,0.0,2954.0086,0.0,0,616.44,841.16,1457.6,True,1457.6
+ 75.0,0.0,0.0,0.1923,9521.6053,0.0,262.3767,0.0,0,82.19,1145.22,1227.41,True,1227.41
+-75.0,0.0,50.0,0.2062,9358.3218,0.0,91.2006,0.0,0,99.32,1123.91,1223.23,True,1223.23
+-75.0,0.0,100.0,0.2143,9262.7296,0.0,0.0,0.0,0,116.44,1111.53,1227.97,True,1227.97
+-75.0,0.0,200.0,0.2174,9225.9296,0.0,0.0,0.0,0,150.68,1107.11,1257.8,True,1257.8
++75.0,0.0,50.0,0.2042,9358.3219,0.0,91.2006,0.0,0,99.32,1126.67,1225.99,True,1225.99
++75.0,0.0,100.0,0.2104,9262.7297,0.0,0.0,0.0,0,116.44,1117.05,1233.49,True,1233.49
++75.0,0.0,200.0,0.2096,9225.9297,0.0,0.0,0.0,0,150.68,1118.14,1268.83,True,1268.83
+ 75.0,50.0,0.0,0.2523,8813.9909,0.0,615.584,0.0,0,164.38,1063.83,1228.22,True,1228.22
+-75.0,50.0,50.0,0.2705,8600.0909,0.0,384.6057,0.0,0,181.51,1035.86,1217.36,True,1217.36
+-75.0,50.0,100.0,0.2859,8418.6118,0.0,191.932,0.0,0,198.63,1012.15,1210.78,True,1210.78
+-75.0,50.0,200.0,0.3028,8219.3606,0.0,0.0,0.0,0,232.88,986.32,1219.2,True,1219.2
+-75.0,100.0,0.0,0.3031,8215.1749,0.0,1077.5898,0.0,0,246.58,996.6,1243.17,True,1243.17
+-75.0,100.0,50.0,0.3214,7999.5462,0.0,844.5691,0.0,0,263.7,968.39,1232.09,True,1232.09
+-75.0,100.0,100.0,0.3396,7785.6462,0.0,613.5908,0.0,0,280.82,940.41,1221.24,True,1221.24
+-75.0,100.0,200.0,0.372,7403.2076,0.0,205.2275,0.0,0,315.07,890.44,1205.51,True,1205.51
+-75.0,200.0,0.0,0.3843,7258.3774,0.0,2242.4357,0.0,0,410.96,893.43,1304.39,True,1304.39
+-75.0,200.0,50.0,0.4049,7014.9604,0.0,1976.5837,0.0,0,428.08,861.56,1289.64,True,1289.64
+-75.0,200.0,100.0,0.4181,6859.7825,0.0,1814.9842,0.0,0,445.21,841.32,1286.53,True,1286.53
+-75.0,200.0,200.0,0.4325,6689.8433,0.0,1657.6836,0.0,0,479.45,819.36,1298.81,True,1298.81
+-75.0,300.0,0.0,0.4345,6666.0831,0.0,3771.7848,0.0,0,575.34,837.65,1412.99,True,1412.99
+-75.0,300.0,50.0,0.4558,6415.6131,0.0,3497.5999,0.0,0,592.47,804.85,1397.32,True,1397.32
+-75.0,300.0,100.0,0.4623,6338.1868,0.0,3427.8619,0.0,0,609.59,794.86,1404.45,True,1404.45
+-75.0,300.0,200.0,0.469,6259.9868,0.0,3378.9488,0.0,0,643.84,784.99,1428.82,True,1428.82
++75.0,50.0,50.0,0.2685,8600.0909,0.0,384.6057,0.0,0,181.51,1038.62,1220.12,True,1220.12
++75.0,50.0,100.0,0.282,8418.6118,0.0,191.932,0.0,0,198.63,1017.67,1216.3,True,1216.3
++75.0,50.0,200.0,0.295,8219.3606,0.0,0.0,0.0,0,232.88,997.36,1230.24,True,1230.24
++75.0,100.0,0.0,0.3031,8215.175,0.0,1077.5898,0.0,0,246.58,996.6,1243.17,True,1243.17
++75.0,100.0,50.0,0.3195,7999.5463,0.0,844.5691,0.0,0,263.7,971.15,1234.85,True,1234.85
++75.0,100.0,100.0,0.3357,7785.6463,0.0,613.5908,0.0,0,280.82,945.93,1226.76,True,1226.76
++75.0,100.0,200.0,0.3642,7403.2076,0.0,205.2275,0.0,0,315.07,901.48,1216.55,True,1216.55
++75.0,200.0,0.0,0.3843,7258.3775,0.0,2242.4356,0.0,0,410.96,893.43,1304.39,True,1304.39
++75.0,200.0,50.0,0.403,7014.9604,0.0,1976.5837,0.0,0,428.08,864.32,1292.4,True,1292.4
++75.0,200.0,100.0,0.4142,6859.7826,0.0,1814.9842,0.0,0,445.21,846.84,1292.05,True,1292.05
++75.0,200.0,200.0,0.4247,6689.8433,0.0,1657.6836,0.0,0,479.45,830.39,1309.84,True,1309.84
++75.0,300.0,0.0,0.4345,6666.0832,0.0,3771.7847,0.0,0,575.34,837.65,1412.99,True,1412.99
++75.0,300.0,50.0,0.4538,6415.6131,0.0,3497.5999,0.0,0,592.47,807.61,1400.08,True,1400.08
++75.0,300.0,100.0,0.4584,6338.1868,0.0,3427.8618,0.0,0,609.59,800.38,1409.97,True,1409.97
++75.0,300.0,200.0,0.4612,6259.9868,0.0,3378.9488,0.0,0,643.84,795.98,1439.81,True,1439.81
+ 100.0,0.0,0.0,0.2357,9010.1804,0.0,594.068,0.0,0,109.59,1087.16,1196.75,True,1196.75
+-100.0,0.0,50.0,0.2533,8802.19,0.0,370.0719,0.0,0,126.71,1059.96,1186.68,True,1186.68
+-100.0,0.0,100.0,0.2674,8636.3891,0.0,195.9215,0.0,0,143.84,1038.33,1182.16,True,1182.16
+-100.0,0.0,200.0,0.2846,8433.7612,0.0,0.0,0.0,0,178.08,1012.05,1190.13,True,1190.13
+-100.0,50.0,0.0,0.2907,8362.1426,0.0,1006.852,0.0,0,191.78,1013.53,1205.31,True,1205.31
+-100.0,50.0,50.0,0.309,8145.8808,0.0,773.0832,0.0,0,208.9,985.24,1194.14,True,1194.14
+-100.0,50.0,100.0,0.3271,7931.9808,0.0,542.105,0.0,0,226.03,957.26,1183.29,True,1183.29
+-100.0,50.0,200.0,0.3578,7570.7596,0.0,158.8096,0.0,0,260.27,910.08,1170.35,True,1170.35
+-100.0,100.0,0.0,0.3397,7784.3573,0.0,1489.8884,0.0,0,273.97,949.02,1222.99,True,1222.99
+-100.0,100.0,50.0,0.3584,7563.4009,0.0,1250.5731,0.0,0,291.1,920.11,1211.21,True,1211.21
+-100.0,100.0,100.0,0.3766,7349.5009,0.0,1019.5949,0.0,0,308.22,892.14,1200.36,True,1200.36
+-100.0,100.0,200.0,0.4122,6929.7841,0.0,567.1885,0.0,0,342.47,837.25,1179.71,True,1179.71
++100.0,0.0,50.0,0.2514,8802.1901,0.0,370.0719,0.0,0,126.71,1062.72,1189.44,True,1189.44
++100.0,0.0,100.0,0.2635,8636.3892,0.0,195.9215,0.0,0,143.84,1043.85,1187.68,True,1187.68
++100.0,0.0,200.0,0.2768,8433.7612,0.0,0.0,0.0,0,178.08,1023.09,1201.17,True,1201.17
++100.0,50.0,0.0,0.2907,8362.1427,0.0,1006.852,0.0,0,191.78,1013.53,1205.31,True,1205.31
++100.0,50.0,50.0,0.3071,8145.8808,0.0,773.0832,0.0,0,208.9,988.0,1196.9,True,1196.9
++100.0,50.0,100.0,0.3232,7931.9808,0.0,542.105,0.0,0,226.03,962.78,1188.81,True,1188.81
++100.0,50.0,200.0,0.35,7570.7596,0.0,158.8096,0.0,0,260.27,921.12,1181.39,True,1181.39
++100.0,100.0,0.0,0.3397,7784.3574,0.0,1489.8884,0.0,0,273.97,949.02,1222.99,True,1222.99
++100.0,100.0,50.0,0.3565,7563.4009,0.0,1250.5731,0.0,0,291.1,922.87,1213.97,True,1213.97
++100.0,100.0,100.0,0.3727,7349.5009,0.0,1019.5949,0.0,0,308.22,897.66,1205.88,True,1205.88
++100.0,100.0,200.0,0.4044,6929.7842,0.0,567.1885,0.0,0,342.47,848.29,1190.75,True,1190.75
+ 100.0,200.0,0.0,0.4182,6859.0997,0.0,2686.2741,0.0,0,438.36,849.95,1288.31,True,1288.31
+-100.0,200.0,50.0,0.4407,6593.6155,0.0,2394.3505,0.0,0,455.48,815.18,1270.66,True,1270.66
+-100.0,200.0,100.0,0.4538,6438.4377,0.0,2232.751,0.0,0,472.6,794.94,1267.54,True,1267.54
+-100.0,200.0,200.0,0.468,6271.0451,0.0,2078.4592,0.0,0,506.85,773.31,1280.16,True,1280.16
+-100.0,300.0,0.0,0.4659,6295.9562,0.0,4244.7741,0.0,0,602.74,797.96,1400.7,True,1400.7
+-100.0,300.0,50.0,0.4894,6019.6647,0.0,3940.0818,0.0,0,619.86,761.76,1381.62,True,1381.62
+-100.0,300.0,100.0,0.4972,5927.1968,0.0,3852.5724,0.0,0,636.99,749.79,1386.78,True,1386.78
+-100.0,300.0,200.0,0.5038,5848.9968,0.0,3803.6594,0.0,0,671.23,739.92,1411.15,True,1411.15
+-150.0,0.0,0.0,0.3094,8141.3579,0.0,1411.4781,0.0,0,164.38,991.08,1155.46,True,1155.46
+-150.0,0.0,50.0,0.3323,7870.7688,0.0,1113.523,0.0,0,181.51,955.63,1137.13,True,1137.13
+-150.0,0.0,100.0,0.3505,7656.8688,0.0,882.5448,0.0,0,198.63,927.65,1126.28,True,1126.28
+-150.0,0.0,200.0,0.3832,7271.0158,0.0,470.1475,0.0,0,232.88,877.22,1110.1,True,1110.1
+-150.0,50.0,0.0,0.3577,7572.2912,0.0,1903.233,0.0,0,246.58,927.71,1174.28,True,1174.28
+-150.0,50.0,50.0,0.3824,7280.137,0.0,1579.7995,0.0,0,263.7,889.41,1153.11,True,1153.11
+-150.0,50.0,100.0,0.4006,7066.237,0.0,1348.8212,0.0,0,280.82,861.44,1142.26,True,1142.26
+-150.0,50.0,200.0,0.4369,6638.437,0.0,886.8647,0.0,0,315.07,805.48,1120.55,True,1120.55
+-150.0,100.0,0.0,0.4023,7045.4783,0.0,2437.2419,0.0,0,328.77,869.83,1198.6,True,1198.6
+-150.0,100.0,50.0,0.4301,6718.2263,0.0,2072.341,0.0,0,345.89,826.91,1172.8,True,1172.8
+-150.0,100.0,100.0,0.4483,6504.3263,0.0,1841.3628,0.0,0,363.01,798.93,1161.95,True,1161.95
+-150.0,100.0,200.0,0.4838,6085.4012,0.0,1389.8918,0.0,0,397.26,744.15,1141.41,True,1141.41
+-150.0,200.0,0.0,0.4719,6225.802,0.0,3739.209,0.0,0,493.15,784.49,1277.64,True,1277.64
+-150.0,200.0,50.0,0.5044,5842.7705,0.0,3308.4061,0.0,0,510.27,734.22,1244.49,True,1244.49
+-150.0,200.0,100.0,0.5229,5624.6642,0.0,3072.4582,0.0,0,527.4,705.68,1233.08,True,1233.08
+-150.0,200.0,200.0,0.5369,5459.4824,0.0,2920.7784,0.0,0,561.64,684.35,1245.99,True,1245.99
++100.0,200.0,50.0,0.4387,6593.6156,0.0,2394.3505,0.0,0,455.48,817.94,1273.42,True,1273.42
++100.0,200.0,100.0,0.4499,6438.4377,0.0,2232.751,0.0,0,472.6,800.46,1273.06,True,1273.06
++100.0,200.0,200.0,0.4602,6271.0452,0.0,2078.4592,0.0,0,506.85,784.35,1291.19,True,1291.19
++100.0,300.0,0.0,0.4659,6295.9563,0.0,4244.7741,0.0,0,602.74,797.96,1400.7,True,1400.7
++100.0,300.0,50.0,0.4874,6019.6647,0.0,3940.0817,0.0,0,619.86,764.52,1384.38,True,1384.38
++100.0,300.0,100.0,0.4933,5927.1968,0.0,3852.5724,0.0,0,636.99,755.31,1392.3,True,1392.3
++100.0,300.0,200.0,0.4961,5848.9968,0.0,3803.6594,0.0,0,671.23,750.93,1422.17,True,1422.17
++150.0,0.0,0.0,0.3094,8141.358,0.0,1411.4781,0.0,0,164.38,991.08,1155.46,True,1155.46
++150.0,0.0,50.0,0.3304,7870.7688,0.0,1113.523,0.0,0,181.51,958.39,1139.89,True,1139.89
++150.0,0.0,100.0,0.3466,7656.8688,0.0,882.5448,0.0,0,198.63,933.17,1131.8,True,1131.8
++150.0,0.0,200.0,0.3754,7271.0158,0.0,470.1475,0.0,0,232.88,888.26,1121.14,True,1121.14
++150.0,50.0,0.0,0.3577,7572.2913,0.0,1903.233,0.0,0,246.58,927.71,1174.28,True,1174.28
++150.0,50.0,50.0,0.3805,7280.1371,0.0,1579.7995,0.0,0,263.7,892.17,1155.87,True,1155.87
++150.0,50.0,100.0,0.3967,7066.2371,0.0,1348.8212,0.0,0,280.82,866.96,1147.78,True,1147.78
++150.0,50.0,200.0,0.4291,6638.4371,0.0,886.8647,0.0,0,315.07,816.52,1131.59,True,1131.59
++150.0,100.0,0.0,0.4023,7045.4784,0.0,2437.2419,0.0,0,328.77,869.83,1198.6,True,1198.6
++150.0,100.0,50.0,0.4282,6718.2263,0.0,2072.341,0.0,0,345.89,829.67,1175.56,True,1175.56
++150.0,100.0,100.0,0.4443,6504.3263,0.0,1841.3628,0.0,0,363.01,804.45,1167.47,True,1167.47
++150.0,100.0,200.0,0.476,6085.4013,0.0,1389.8918,0.0,0,397.26,755.19,1152.45,True,1152.45
++150.0,200.0,0.0,0.4719,6225.8021,0.0,3739.2089,0.0,0,493.15,784.49,1277.64,True,1277.64
++150.0,200.0,50.0,0.5024,5842.7706,0.0,3308.4061,0.0,0,510.27,736.98,1247.25,True,1247.25
++150.0,200.0,100.0,0.519,5624.6643,0.0,3072.4582,0.0,0,527.4,711.2,1238.6,True,1238.6
++150.0,200.0,200.0,0.5291,5459.4824,0.0,2920.7783,0.0,0,561.64,695.39,1257.03,True,1257.03
+ 150.0,300.0,0.0,0.5124,5748.2508,0.0,5383.3011,0.0,0,657.53,743.62,1401.16,True,1401.16
+-150.0,300.0,50.0,0.5452,5361.4568,0.0,4948.053,0.0,0,674.66,692.86,1367.51,True,1367.51
+-150.0,300.0,100.0,0.5602,5185.1778,0.0,4761.523,0.0,0,691.78,669.84,1361.62,True,1361.62
+-150.0,300.0,200.0,0.5711,5056.1818,0.0,4652.5958,0.0,0,726.03,653.27,1379.3,True,1379.3
++150.0,300.0,50.0,0.5432,5361.4568,0.0,4948.053,0.0,0,674.66,695.62,1370.27,True,1370.27
++150.0,300.0,100.0,0.5563,5185.1778,0.0,4761.523,0.0,0,691.78,675.36,1367.14,True,1367.14
++150.0,300.0,200.0,0.5633,5056.1818,0.0,4652.5958,0.0,0,726.03,664.31,1390.33,True,1390.33
+diff --git a/requirements.txt b/requirements.txt
+index da89095..479920b 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -4,7 +4,7 @@
+ 
+ # Core ML
+ torch==2.11.0
+-torchvision==0.29.1
++torchvision==0.26.0
+ scikit-learn==1.5.1
+ 
+ # Data handling
+diff --git a/scripts/evaluate_test_set.py b/scripts/evaluate_test_set.py
+index c51c531..5ca10e8 100644
+--- a/scripts/evaluate_test_set.py
++++ b/scripts/evaluate_test_set.py
+@@ -13,6 +13,7 @@ Usage:
+ """
+ import argparse
+ import sys
++import re
+ from pathlib import Path
+ 
+ # Ensure project root is in sys.path and initialize Windows PyTorch DLLs first
+@@ -39,8 +40,8 @@ def parse_args():
+     parser.add_argument("--solar-checkpoint", type=str, default=None, help="Path to best solar checkpoint .pt")
+     parser.add_argument("--solar-mode", type=str, default="fine_tune", choices=["feature_extractor", "fine_tune", "scratch"])
+     parser.add_argument("--nasa-checkpoint", type=str, default=None, help="Path to best NASA checkpoint .pt")
+-    parser.add_argument("--nasa-hidden-dim", type=int, default=64)
+-    parser.add_argument("--nasa-num-layers", type=int, default=2)
++    parser.add_argument("--nasa-hidden-dim", type=int, default=None, help="Optional architecture override; otherwise inferred from checkpoint")
++    parser.add_argument("--nasa-num-layers", type=int, default=None, help="Optional architecture override; otherwise inferred from checkpoint")
+     parser.add_argument("--batch-size", type=int, default=32)
+     return parser.parse_args()
+ 
+@@ -121,9 +122,31 @@ def evaluate_solar_test_set(checkpoint_path: Path, mode: str, batch_size: int =
+ def evaluate_nasa_test_set(checkpoint_path: Path, hidden_dim: int, num_layers: int, batch_size: int = 32) -> dict:
+     print("\n" + "=" * 70)
+     print("EVALUATING MODEL B ON HELD-OUT NASA POWER TEST SET")
+-    print(f"Checkpoint: {checkpoint_path} | Hidden: {hidden_dim} | Layers: {num_layers}")
++    print(f"Checkpoint: {checkpoint_path}")
+     print("=" * 70)
+ 
++    checkpoint = torch.load(checkpoint_path, map_location="cpu")
++    state = checkpoint.get("model_state_dict", checkpoint)
++    first_layer = state.get("lstm.weight_hh_l0")
++    if first_layer is None:
++        raise ValueError("Checkpoint does not contain lstm.weight_hh_l0; cannot infer WeatherLSTM architecture")
++    inferred_hidden = int(first_layer.shape[1])
++    layer_ids = [
++        int(match.group(1))
++        for key in state
++        if (match := re.match(r"lstm\.weight_hh_l(\d+)$", key))
++    ]
++    inferred_layers = max(layer_ids) + 1 if layer_ids else 1
++    inferred_input = int(state["lstm.weight_ih_l0"].shape[1])
++    if inferred_input != 4:
++        raise ValueError(f"Checkpoint expects {inferred_input} input features; this NASA builder supplies 4")
++    if hidden_dim is not None and hidden_dim != inferred_hidden:
++        raise ValueError(f"Requested hidden_dim={hidden_dim}, but checkpoint requires {inferred_hidden}")
++    if num_layers is not None and num_layers != inferred_layers:
++        raise ValueError(f"Requested num_layers={num_layers}, but checkpoint requires {inferred_layers}")
++    hidden_dim, num_layers = inferred_hidden, inferred_layers
++    print(f"Inferred checkpoint architecture: input=4, hidden={hidden_dim}, layers={num_layers}")
++
+     nasa_csv = PROJECT_ROOT / "data" / "raw" / "nasa_power" / "POWER_Point_Hourly_20230101_20231231_019d08N_072d88E_LST.csv"
+ 
+     _, _, test_ds, _, _ = build_nasa_datasets(
+@@ -141,8 +164,7 @@ def evaluate_nasa_test_set(checkpoint_path: Path, hidden_dim: int, num_layers: i
+     print(f"Test Windows: {len(test_ds):,}")
+ 
+     model = WeatherLSTM(input_dim=4, hidden_dim=hidden_dim, num_layers=num_layers)
+-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+-    model.load_state_dict(checkpoint["model_state_dict"])
++    model.load_state_dict(state)
+ 
+     unscaler = lambda arr: test_ds.inverse_transform_targets(arr)
+ 
+diff --git a/src/data/datasets.py b/src/data/datasets.py
+index 43d751d..f4381cd 100644
+--- a/src/data/datasets.py
++++ b/src/data/datasets.py
+@@ -333,6 +333,7 @@ def build_nasa_datasets(
+     feature_cols: Optional[List[str]] = None,
+     target_col: str = "ALLSKY_SFC_SW_DWN",
+     scale: bool = True,
++    split_basis: str = "legacy_source",
+ ) -> Tuple[NasaWeatherDataset, NasaWeatherDataset, NasaWeatherDataset, Optional[StandardScaler], Optional[StandardScaler]]:
+     """
+     Construct leakage-free NASA POWER PyTorch Datasets for sequence forecasting.
+@@ -365,6 +366,7 @@ def build_nasa_datasets(
+         val_ratio=val_ratio,
+         test_ratio=test_ratio,
+         embargo_steps=embargo_hours,
++        ratio_basis=split_basis,
+     )
+ 
+     train_feat = train_df[feature_cols].to_numpy(dtype=np.float32)
+diff --git a/src/data/demand.py b/src/data/demand.py
+index bf0270f..8d4a55f 100644
+--- a/src/data/demand.py
++++ b/src/data/demand.py
+@@ -204,6 +204,7 @@ def build_demand_datasets(
+     embargo_hours: int = 24,
+     scale: bool = True,
+     max_demand_kwh: float = 10000.0,
++    split_basis: str = "legacy_source",
+ ) -> Tuple[DemandDataset, DemandDataset, DemandDataset, Optional[StandardScaler], Optional[StandardScaler]]:
+     """
+     Construct leakage-safe, causally aligned DemandDataset instances for train, val, and test splits.
+@@ -259,6 +260,7 @@ def build_demand_datasets(
+         val_ratio=val_ratio,
+         test_ratio=test_ratio,
+         embargo_steps=embargo_hours,
++        ratio_basis=split_basis,
+     )
+ 
+     train_feat = train_df[feature_cols].to_numpy(dtype=np.float32)
+diff --git a/src/data/splits.py b/src/data/splits.py
+index 37e63b8..bddb69b 100644
+--- a/src/data/splits.py
++++ b/src/data/splits.py
+@@ -74,6 +74,7 @@ def split_timeseries_chronological(
+     val_ratio: float = 0.15,
+     test_ratio: float = 0.15,
+     embargo_steps: int = 24,
++    ratio_basis: str = "retained",
+ ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+     """
+     Split time series dataframe chronologically into train, val, and test partitions
+@@ -86,26 +87,47 @@ def split_timeseries_chronological(
+         val_ratio: Fraction of rows for validation.
+         test_ratio: Fraction of rows for testing.
+         embargo_steps: Number of steps to purge between split boundaries.
++        ratio_basis: "retained" allocates the requested ratios across rows after removing
++            both embargo gaps. "legacy_source" preserves historical checkpoint boundaries.
+ 
+     Returns:
+         Tuple of (train_df, val_df, test_df).
+     """
+-    assert np.isclose(train_ratio + val_ratio + test_ratio, 1.0), "Split ratios must sum to 1.0"
+-    assert embargo_steps >= 0, "embargo_steps must be non-negative"
++    ratios = np.asarray([train_ratio, val_ratio, test_ratio], dtype=np.float64)
++    if not np.isfinite(ratios).all() or np.any(ratios <= 0.0) or not np.isclose(ratios.sum(), 1.0):
++        raise ValueError("Split ratios must be finite, positive, and sum to 1.0")
++    if embargo_steps < 0:
++        raise ValueError("embargo_steps must be non-negative")
++    if ratio_basis not in {"retained", "legacy_source"}:
++        raise ValueError("ratio_basis must be 'retained' or 'legacy_source'")
+     n = len(df)
+ 
+     if time_col is not None:
+         assert df[time_col].is_monotonic_increasing, f"{time_col} must be monotonically increasing"
+         assert not df[time_col].duplicated().any(), f"{time_col} contains duplicate timestamps"
+ 
+-    train_end = int(n * train_ratio)
+-    val_start = train_end + embargo_steps
+-    val_end = val_start + int(n * val_ratio)
+-    test_start = val_end + embargo_steps
+-    test_end = n
+-
+-    assert val_start < val_end, "Embargo too large relative to validation set size"
+-    assert test_start < test_end, "Embargo too large relative to test set size"
++    if ratio_basis == "retained":
++        retained = n - 2 * embargo_steps
++        if retained <= 0:
++            raise ValueError("Series is too short for the requested embargo gaps")
++        train_size = int(np.floor(retained * train_ratio))
++        val_size = int(np.floor(retained * val_ratio))
++        test_size = retained - train_size - val_size
++        train_end = train_size
++        val_start = train_end + embargo_steps
++        val_end = val_start + val_size
++        test_start = val_end + embargo_steps
++        test_end = test_start + test_size
++    else:
++        # Preserve the historical boundaries used to train existing checkpoints.
++        train_end = int(n * train_ratio)
++        val_start = train_end + embargo_steps
++        val_end = val_start + int(n * val_ratio)
++        test_start = val_end + embargo_steps
++        test_end = n
++
++    if train_end <= 0 or val_start >= val_end or test_start >= test_end:
++        raise ValueError("Series is too short for the requested ratios and embargo")
+ 
+     train_df = df.iloc[:train_end].copy()
+     val_df = df.iloc[val_start:val_end].copy()
+diff --git a/src/data/wind.py b/src/data/wind.py
+index 066c321..f33df5f 100644
+--- a/src/data/wind.py
++++ b/src/data/wind.py
+@@ -350,6 +350,7 @@ def build_wind_datasets(
+     embargo_hours: int = 24,
+     scale: bool = True,
+     power_curve: Optional[TurbinePowerCurve] = None,
++    split_basis: str = "legacy_source",
+ ) -> Tuple[WindDataset, WindDataset, WindDataset, Optional[StandardScaler], Optional[StandardScaler]]:
+     """
+     Construct leakage-safe, causally aligned WindDataset instances for train, val, and test splits.
+@@ -392,6 +393,7 @@ def build_wind_datasets(
+         val_ratio=val_ratio,
+         test_ratio=test_ratio,
+         embargo_steps=embargo_hours,
++        ratio_basis=split_basis,
+     )
+ 
+     train_feat = train_df[feature_cols].to_numpy(dtype=np.float32)
+diff --git a/src/decision_support/energy_balance.py b/src/decision_support/energy_balance.py
+index 9dbf069..a110c7a 100644
+--- a/src/decision_support/energy_balance.py
++++ b/src/decision_support/energy_balance.py
+@@ -81,6 +81,9 @@ class DispatchTimeSeries:
+     battery_charge: np.ndarray
+     battery_discharge: np.ndarray
+     battery_soc: np.ndarray
++    battery_renewable_soc: np.ndarray
++    renewable_origin_battery_discharge: np.ndarray
++    initial_soc_kwh: float
+ 
+ 
+ def simulate_energy_dispatch(
+@@ -143,6 +146,8 @@ def simulate_energy_dispatch(
+     b_charge = np.zeros(n_steps, dtype=np.float64)
+     b_discharge = np.zeros(n_steps, dtype=np.float64)
+     b_soc = np.zeros(n_steps, dtype=np.float64)
++    b_renewable_soc = np.zeros(n_steps, dtype=np.float64)
++    renewable_origin_discharge = np.zeros(n_steps, dtype=np.float64)
+ 
+     # Battery limits
+     has_battery = b_cfg.capacity_kwh > 1e-6
+@@ -151,6 +156,8 @@ def simulate_energy_dispatch(
+     p_ch_max = b_cfg.capacity_kwh * b_cfg.max_c_rate_charge * time_step_hours
+     p_dis_max = b_cfg.capacity_kwh * b_cfg.max_c_rate_discharge * time_step_hours
+     current_soc = b_cfg.capacity_kwh * b_cfg.initial_soc_ratio if has_battery else 0.0
++    initial_soc = current_soc
++    renewable_soc = 0.0  # Stored renewable-origin energy; initial SOC is carry-in.
+ 
+     # Grid energy limit per step (Power * dt)
+     grid_energy_max = grid_import_limit_kw * time_step_hours
+@@ -169,7 +176,9 @@ def simulate_energy_dispatch(
+                 headroom = max(0.0, soc_max - current_soc)
+                 max_charge_energy = min(surplus, p_ch_max, headroom / b_cfg.charge_efficiency)
+                 b_charge[t] = max_charge_energy
+-                current_soc += max_charge_energy * b_cfg.charge_efficiency
++                stored_energy = max_charge_energy * b_cfg.charge_efficiency
++                current_soc += stored_energy
++                renewable_soc += stored_energy
+                 curtailment[t] = surplus - max_charge_energy
+             else:
+                 curtailment[t] = surplus
+@@ -188,7 +197,12 @@ def simulate_energy_dispatch(
+                 available_discharge_energy = max(0.0, (current_soc - soc_min) * b_cfg.discharge_efficiency)
+                 disch = min(deficit, p_dis_max, available_discharge_energy)
+                 b_discharge[t] = disch
+-                current_soc -= (disch / b_cfg.discharge_efficiency)
++                withdrawn_soc = disch / b_cfg.discharge_efficiency
++                renewable_fraction = (renewable_soc / current_soc) if current_soc > 1e-12 else 0.0
++                renewable_withdrawal = min(renewable_soc, withdrawn_soc * renewable_fraction)
++                renewable_soc -= renewable_withdrawal
++                renewable_origin_discharge[t] = renewable_withdrawal * b_cfg.discharge_efficiency
++                current_soc -= withdrawn_soc
+                 rem_deficit = deficit - disch
+             else:
+                 rem_deficit = deficit
+@@ -199,10 +213,12 @@ def simulate_energy_dispatch(
+             unmet_demand[t] = rem_deficit - g_imp
+ 
+         b_soc[t] = current_soc
++        b_renewable_soc[t] = renewable_soc
+ 
+     served_demand = r_used + b_discharge + grid_import
+ 
+-    # Conservation checks (numerical tolerance: 1e-6 kWh)
++    # Conservation checks (numerical tolerance: 1e-6 kWh). Battery carry-in is
++    # reported separately; charging losses and discharging losses are explicit.
+     demand_diff = np.abs((served_demand + unmet_demand) - d)
+     if np.any(demand_diff > 1e-6):
+         max_viol = float(np.max(demand_diff))
+@@ -213,6 +229,19 @@ def simulate_energy_dispatch(
+         max_viol = float(np.max(ren_diff))
+         raise RuntimeError(f"Energy conservation violation in renewable balance: max violation {max_viol:.2e} kWh")
+ 
++    battery_soc_residual = (
++        current_soc - initial_soc
++        - float(np.sum(b_charge)) * b_cfg.charge_efficiency
++        + float(np.sum(b_discharge)) / b_cfg.discharge_efficiency
++    ) if has_battery else 0.0
++    if abs(battery_soc_residual) > 1e-6:
++        raise RuntimeError(
++            f"Battery state-of-charge conservation violation: {battery_soc_residual:.2e} kWh"
++        )
++    origin_diff = np.abs(renewable_origin_discharge - np.minimum(b_discharge, renewable_origin_discharge))
++    if np.any(origin_diff > 1e-9) or np.any(b_renewable_soc > b_soc + 1e-9):
++        raise RuntimeError("Renewable-origin battery accounting exceeded available discharge or SOC")
++
+     ts = DispatchTimeSeries(
+         demand=d,
+         renewable_available=r,
+@@ -224,6 +253,9 @@ def simulate_energy_dispatch(
+         battery_charge=b_charge,
+         battery_discharge=b_discharge,
+         battery_soc=b_soc,
++        battery_renewable_soc=b_renewable_soc,
++        renewable_origin_battery_discharge=renewable_origin_discharge,
++        initial_soc_kwh=float(initial_soc),
+     )
+ 
+     # Compute high-level summary metrics
+@@ -236,9 +268,14 @@ def simulate_energy_dispatch(
+     total_served = float(np.sum(served_demand))
+     total_b_discharge = float(np.sum(b_discharge))
+     total_b_charge = float(np.sum(b_charge))
+-
+-    # Safe zero-division metric computations
+-    ren_share_served = float((total_r_used + total_b_discharge) / total_served) if total_served > 1e-6 else 0.0
++    renewable_b_discharge = float(np.sum(renewable_origin_discharge))
++    carry_in_discharge = max(0.0, total_b_discharge - renewable_b_discharge)
++    final_soc = float(current_soc)
++
++    # Renewable penetration counts direct renewable supply and only the share of
++    # battery output charged from renewables during this simulation. Initial SOC
++    # is carry-in energy and is never mislabeled as newly generated renewable.
++    ren_share_served = float((total_r_used + renewable_b_discharge) / total_served) if total_served > 1e-6 else 0.0
+     direct_ren_share_served = float(total_r_used / total_served) if total_served > 1e-6 else 0.0
+     grid_share_served = float(total_grid / total_served) if total_served > 1e-6 else 0.0
+     loss_of_load_fraction = float(total_unmet / total_demand) if total_demand > 1e-6 else 0.0
+@@ -252,7 +289,13 @@ def simulate_energy_dispatch(
+         "served_demand_kwh": round(total_served, 4),
+         "renewable_used_kwh": round(total_r_used, 4),
+         "battery_discharge_kwh": round(total_b_discharge, 4),
++        "renewable_origin_battery_discharge_kwh": round(renewable_b_discharge, 4),
++        "initial_soc_carry_in_discharge_kwh": round(carry_in_discharge, 4),
+         "battery_charge_kwh": round(total_b_charge, 4),
++        "initial_soc_kwh": round(float(initial_soc), 4),
++        "final_soc_kwh": round(final_soc, 4),
++        "terminal_soc_delta_kwh": round(final_soc - float(initial_soc), 4),
++        "battery_soc_balance_residual_kwh": round(float(battery_soc_residual), 10),
+         "grid_import_kwh": round(total_grid, 4),
+         "unmet_demand_kwh": round(total_unmet, 4),
+         "curtailment_kwh": round(total_curtailment, 4),
+diff --git a/src/decision_support/optimizer.py b/src/decision_support/optimizer.py
+index fd3d77c..36d0bb9 100644
+--- a/src/decision_support/optimizer.py
++++ b/src/decision_support/optimizer.py
+@@ -57,6 +57,7 @@ class CostModel:
+         grid_import_kwh: float,
+         unmet_demand_kwh: float,
+         curtailment_kwh: float,
++        carry_in_discharge_kwh: float = 0.0,
+     ) -> Dict[str, float]:
+         raw_capex = (
+             self.solar_capex_per_kw * solar_kw
+@@ -73,10 +74,12 @@ class CostModel:
+             self.grid_energy_rate * grid_import_kwh
+             + self.unmet_demand_penalty * unmet_demand_kwh
+             + self.curtailment_penalty * curtailment_kwh
++            + self.grid_energy_rate * carry_in_discharge_kwh
+         )
+         return {
+             "capex": round(capex, 2),
+             "opex": round(opex, 2),
++            "carry_in_energy_cost": round(self.grid_energy_rate * carry_in_discharge_kwh, 2),
+             "total_cost": round(capex + opex, 2),
+         }
+ 
+@@ -146,6 +149,7 @@ def optimize_energy_mix(
+         grid_import_kwh=base_metrics["grid_import_kwh"],
+         unmet_demand_kwh=base_metrics["unmet_demand_kwh"],
+         curtailment_kwh=base_metrics["curtailment_kwh"],
++        carry_in_discharge_kwh=base_metrics["initial_soc_carry_in_discharge_kwh"],
+     )
+ 
+     # 2. Systematically Evaluate All Grid Candidates
+@@ -158,9 +162,9 @@ def optimize_energy_mix(
+     best_cap_dict = None
+ 
+     for s_kw in solar_grid_kw:
+-        s_gen = convert_irradiance_to_solar_pv_kwh(solar_irradiance_wh_m2, capacity_kw=s_kw)
++        s_gen = convert_irradiance_to_solar_pv_kwh(solar_irradiance_wh_m2, capacity_kw=s_kw, time_step_hours=time_step_hours)
+         for w_kw in wind_grid_kw:
+-            w_gen = convert_wind_speed_to_generation_kwh(wind_speed_ms, capacity_kw=w_kw)
++            w_gen = convert_wind_speed_to_generation_kwh(wind_speed_ms, capacity_kw=w_kw, time_step_hours=time_step_hours)
+             r_total = s_gen + w_gen
+ 
+             for b_kwh in battery_grid_kwh:
+@@ -181,6 +185,7 @@ def optimize_energy_mix(
+                     grid_import_kwh=m["grid_import_kwh"],
+                     unmet_demand_kwh=m["unmet_demand_kwh"],
+                     curtailment_kwh=m["curtailment_kwh"],
++                    carry_in_discharge_kwh=m["initial_soc_carry_in_discharge_kwh"],
+                 )
+ 
+                 # Determine objective score
+diff --git a/src/decision_support/scenarios.py b/src/decision_support/scenarios.py
+index a42f81f..aab7790 100644
+--- a/src/decision_support/scenarios.py
++++ b/src/decision_support/scenarios.py
+@@ -72,6 +72,7 @@ def convert_irradiance_to_solar_pv_kwh(
+     capacity_kw: float,
+     standard_test_irradiance: float = 1000.0,
+     performance_ratio: float = 0.78,
++    time_step_hours: float = 1.0,
+ ) -> np.ndarray:
+     """
+     Convert surface solar irradiance (Wh/m²) to estimated solar PV electricity generation (kWh).
+@@ -95,19 +96,25 @@ def convert_irradiance_to_solar_pv_kwh(
+         1D float64 array of estimated solar electricity generation in kWh.
+     """
+     irr = np.asarray(irradiance_wh_m2, dtype=np.float64)
++    if not np.isfinite(irr).all():
++        raise ValueError("Irradiance must contain only finite values")
+     if np.any(irr < -1e-6):
+         raise ValueError("Irradiance cannot be negative")
++    if not np.isfinite([capacity_kw, standard_test_irradiance, performance_ratio, time_step_hours]).all():
++        raise ValueError("Solar conversion parameters must be finite")
++    if time_step_hours <= 0.0:
++        raise ValueError("time_step_hours must be strictly positive")
+     if capacity_kw < 0.0:
+         raise ValueError("Solar capacity must be non-negative")
+     if standard_test_irradiance <= 0.0 or performance_ratio <= 0.0:
+         raise ValueError("STC irradiance and performance ratio must be strictly positive")
+ 
+     # Hourly generation in kWh
+-    norm_irr = np.maximum(irr, 0.0) / standard_test_irradiance
+-    raw_gen = capacity_kw * norm_irr * performance_ratio
++    norm_irr = np.maximum(irr, 0.0) / (standard_test_irradiance * time_step_hours)
++    raw_gen = capacity_kw * norm_irr * performance_ratio * time_step_hours
+ 
+-    # Inverter capacity clipping
+-    gen_clipped = np.minimum(raw_gen, capacity_kw)
++    # Inverter power limit integrated over the interval.
++    gen_clipped = np.minimum(raw_gen, capacity_kw * time_step_hours)
+     return gen_clipped.astype(np.float64)
+ 
+ 
+@@ -118,6 +125,7 @@ def convert_wind_speed_to_generation_kwh(
+     cut_in_speed: float = 3.0,
+     rated_speed: float = 12.0,
+     cut_out_speed: float = 25.0,
++    time_step_hours: float = 1.0,
+ ) -> np.ndarray:
+     """
+     Convert wind speed (m/s) to estimated electrical generation (kWh) for a specified wind capacity.
+@@ -139,8 +147,14 @@ def convert_wind_speed_to_generation_kwh(
+         1D float64 array of estimated wind electricity generation in kWh per hour.
+     """
+     ws = np.asarray(wind_speed_ms, dtype=np.float64)
++    if not np.isfinite(ws).all():
++        raise ValueError("Wind speed must contain only finite values")
+     if np.any(ws < -1e-6):
+         raise ValueError("Wind speed cannot be negative")
++    if not np.isfinite([capacity_kw, reference_rated_power_kw, cut_in_speed, rated_speed, cut_out_speed, time_step_hours]).all():
++        raise ValueError("Wind conversion parameters must be finite")
++    if time_step_hours <= 0.0:
++        raise ValueError("time_step_hours must be strictly positive")
+     if capacity_kw < 0.0:
+         raise ValueError("Wind capacity must be non-negative")
+ 
+@@ -157,7 +171,7 @@ def convert_wind_speed_to_generation_kwh(
+     power_fraction[rated_mask] = 1.0
+ 
+     # Scaled generation in kWh (Power * 1h)
+-    gen = capacity_kw * power_fraction
++    gen = capacity_kw * power_fraction * time_step_hours
+     return gen.astype(np.float64)
+ 
+ 
+@@ -173,10 +187,11 @@ def build_synthetic_hybrid_benchmark_scenario(
+     """
+     Construct a clearly labelled illustrative multimodal energy-mix benchmark.
+ 
+-    DISCLAIMER: Combines characteristic temporal signatures from Model B (Mumbai irradiance),
+-    Model C (Gujarat wind speed), and Model D (Orlando demand) into a synchronized 1-hour
+-    interval sequence for decision-support algorithm validation.
+-    Does NOT claim real-world co-location or synchronized sensor acquisition.
++    DISCLAIMER: Combines characteristic profiles from Model B (Mumbai irradiance),
++    Model C (Gujarat wind speed), and Model D (Orlando demand) by array position.
++    Their timestamps are not aligned and the result is not a synchronized physical time series.
++    It is only a synthetic decision-support software benchmark and does NOT claim
++    real-world co-location or synchronized sensor acquisition.
+     """
+     n = min(len(solar_irradiance_wh_m2), len(wind_speed_ms), len(demand_kwh), n_hours)
+ 
+diff --git a/src/decision_support/uncertainty_eval.py b/src/decision_support/uncertainty_eval.py
+index 893f314..f975ef8 100644
+--- a/src/decision_support/uncertainty_eval.py
++++ b/src/decision_support/uncertainty_eval.py
+@@ -93,8 +93,8 @@ def evaluate_uncertainty_feasibility(
+     b_cfg = battery_config if battery_config is not None else BatteryConfig(capacity_kwh=0.0)
+ 
+     # 1. Central Scenario (Point forecasts)
+-    s_gen_cent = convert_irradiance_to_solar_pv_kwh(solar_irradiance_central, solar_capacity_kw)
+-    w_gen_cent = convert_wind_speed_to_generation_kwh(wind_speed_central, wind_capacity_kw)
++    s_gen_cent = convert_irradiance_to_solar_pv_kwh(solar_irradiance_central, solar_capacity_kw, time_step_hours=time_step_hours)
++    w_gen_cent = convert_wind_speed_to_generation_kwh(wind_speed_central, wind_capacity_kw, time_step_hours=time_step_hours)
+     r_cent = s_gen_cent + w_gen_cent
+     ts_cent, m_cent = simulate_energy_dispatch(
+         demand_kwh=demand_central_kwh,
+@@ -113,8 +113,8 @@ def evaluate_uncertainty_feasibility(
+     )
+ 
+     # 2. Conservative / Stress Scenario (Lower renewables, Upper demand)
+-    s_gen_low = convert_irradiance_to_solar_pv_kwh(solar_irradiance_lower, solar_capacity_kw)
+-    w_gen_low = convert_wind_speed_to_generation_kwh(wind_speed_lower, wind_capacity_kw)
++    s_gen_low = convert_irradiance_to_solar_pv_kwh(solar_irradiance_lower, solar_capacity_kw, time_step_hours=time_step_hours)
++    w_gen_low = convert_wind_speed_to_generation_kwh(wind_speed_lower, wind_capacity_kw, time_step_hours=time_step_hours)
+     r_low = s_gen_low + w_gen_low
+     ts_stress, m_stress = simulate_energy_dispatch(
+         demand_kwh=demand_upper_kwh,
+@@ -133,8 +133,8 @@ def evaluate_uncertainty_feasibility(
+     )
+ 
+     # 3. Favorable / Optimistic Scenario (Upper renewables, Lower demand)
+-    s_gen_upp = convert_irradiance_to_solar_pv_kwh(solar_irradiance_upper, solar_capacity_kw)
+-    w_gen_upp = convert_wind_speed_to_generation_kwh(wind_speed_upper, wind_capacity_kw)
++    s_gen_upp = convert_irradiance_to_solar_pv_kwh(solar_irradiance_upper, solar_capacity_kw, time_step_hours=time_step_hours)
++    w_gen_upp = convert_wind_speed_to_generation_kwh(wind_speed_upper, wind_capacity_kw, time_step_hours=time_step_hours)
+     r_upp = s_gen_upp + w_gen_upp
+     ts_opt, m_opt = simulate_energy_dispatch(
+         demand_kwh=demand_lower_kwh,
+diff --git a/src/frontend/model_loaders.py b/src/frontend/model_loaders.py
+index 6c25d28..2cc1bb8 100644
+--- a/src/frontend/model_loaders.py
++++ b/src/frontend/model_loaders.py
+@@ -10,6 +10,7 @@ Ensures:
+ from pathlib import Path
+ import json
+ import io
++import logging
+ from typing import Any, Dict, List, Optional, Tuple, Union
+ import numpy as np
+ import pandas as pd
+@@ -17,6 +18,7 @@ from PIL import Image
+ 
+ # 1. Early Windows PyTorch DLL initialization
+ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
++LOGGER = logging.getLogger(__name__)
+ import src.utils.torch_loader  # noqa: F401
+ import torch
+ import torch.nn as nn
+@@ -57,6 +59,33 @@ def get_project_root() -> Path:
+     return PROJECT_ROOT
+ 
+ 
++def _project_nonnegative_predictions(values: np.ndarray, target_name: str) -> Tuple[np.ndarray, int]:
++    """Validate finite model outputs and explicitly project negatives to the physical domain.
++
++    Callers retain the unprojected array for diagnostics. A warning records every
++    correction so systematic invalid outputs cannot be hidden.
++    """
++    raw = np.asarray(values, dtype=np.float64)
++    if not np.isfinite(raw).all():
++        raise ValueError(f"{target_name} model produced NaN or infinite predictions")
++    negative_count = int(np.count_nonzero(raw < 0.0))
++    if negative_count:
++        LOGGER.warning(
++            "Clipped %d/%d negative %s predictions (%.2f%%); raw values retained for diagnostics",
++            negative_count, raw.size, target_name, 100.0 * negative_count / max(raw.size, 1),
++        )
++    return np.maximum(raw, 0.0), negative_count
++
++
++def _validate_nonnegative_targets(values: np.ndarray, target_name: str, tolerance: float = 1e-4) -> np.ndarray:
++    """Reject invalid ground-truth labels instead of silently changing observations."""
++    observed = np.asarray(values, dtype=np.float64)
++    if not np.isfinite(observed).all() or np.any(observed < -tolerance):
++        raise ValueError(f"{target_name} ground truth contains non-finite or materially negative values")
++    # Inverse StandardScaler can map exact physical zero to a tiny negative round-off.
++    return np.maximum(observed, 0.0)
++
++
+ @st.cache_data
+ def load_registry_data() -> pd.DataFrame:
+     """Load and cache the complete experiment registry."""
+@@ -66,6 +95,26 @@ def load_registry_data() -> pd.DataFrame:
+     return pd.read_csv(path)
+ 
+ 
++def get_verified_metric(experiment_id: str, metric_name: str) -> Optional[float]:
++    """Return a metric from the latest completed test registry row for an experiment."""
++    records = load_registry_data()
++    required = {"experiment_id", "partition", "status", metric_name}
++    if records.empty or not required.issubset(records.columns):
++        return None
++    matches = records[
++        (records["experiment_id"].astype(str) == experiment_id)
++        & (records["partition"].astype(str).str.lower() == "test")
++        & (records["status"].astype(str).str.upper() == "COMPLETED")
++    ]
++    if matches.empty:
++        return None
++    try:
++        value = float(matches.iloc[-1][metric_name])
++    except (TypeError, ValueError):
++        return None
++    return value if np.isfinite(value) else None
++
++
+ @st.cache_data
+ def load_uncertainty_summary() -> Dict[str, Any]:
+     """Load and cache the Stage 4 conformal uncertainty summary."""
+@@ -117,38 +166,79 @@ def load_solar_nowcaster() -> Optional[nn.Module]:
+ 
+ def predict_solar_pv_from_image(image_input: Union[Image.Image, bytes, Path]) -> float:
+     """
+-    Run contemporaneous PV power inference on a sky image.
+-
+-    Args:
+-        image_input: PIL Image, raw image bytes, or Path.
++    Estimate instantaneous PV power from an image.
+ 
+-    Returns:
+-        Estimated instantaneous PV power in kW (non-negative).
++    The model was trained on SKIPP'D sky images. This function validates
++    basic image properties, but does not guarantee that an image depicts
++    the sky or that a prediction is reliable for out-of-domain inputs.
+     """
+     model = load_solar_nowcaster()
+     if model is None:
+-        raise RuntimeError("Solar Nowcaster model checkpoint is unavailable.")
++        raise RuntimeError(
++            "Solar Nowcaster checkpoint is unavailable. "
++            "Check checkpoints/EXP_SOLAR_DL_S3/best_model.pt."
++        )
+ 
+-    if isinstance(image_input, (str, Path)):
+-        img = Image.open(image_input).convert("RGB")
+-    elif isinstance(image_input, bytes):
+-        img = Image.open(io.BytesIO(image_input)).convert("RGB")
+-    elif isinstance(image_input, Image.Image):
+-        img = image_input.convert("RGB")
+-    else:
+-        raise TypeError(f"Unsupported image input type: {type(image_input)}")
++    # Load the image and handle invalid or unreadable files.
++    try:
++        if isinstance(image_input, (str, Path)):
++            with Image.open(image_input) as source:
++                source.verify()
++            with Image.open(image_input) as source:
++                img = source.convert("RGB")
++
++        elif isinstance(image_input, bytes):
++            with Image.open(io.BytesIO(image_input)) as source:
++                source.verify()
++            with Image.open(io.BytesIO(image_input)) as source:
++                img = source.convert("RGB")
++
++        elif isinstance(image_input, Image.Image):
++            img = image_input.convert("RGB")
++
++        else:
++            raise TypeError(
++                f"Unsupported image input type: {type(image_input)}"
++            )
++
++    except (OSError, ValueError) as exc:
++        raise ValueError(
++            "This file could not be read as a valid image. "
++            "Please upload a valid PNG or JPEG."
++        ) from exc
++
++    # Reject extremely small or excessively large inputs.
++    width, height = img.size
++    if width < 32 or height < 32:
++        raise ValueError(
++            "The image is too small for reliable processing. "
++            "Please upload an image at least 32 x 32 pixels."
++        )
+ 
+-    # Ensure 64x64 size
+-    if img.size != (64, 64):
+-        img = img.resize((64, 64), Image.Resampling.BILINEAR)
++    if width * height > 25_000_000:
++        raise ValueError(
++            "The image is too large to process safely. "
++            "Please upload an image with no more than 25 megapixels."
++        )
+ 
++    # Match the model's expected input size and normalization.
++    img = img.resize((64, 64), Image.Resampling.BILINEAR)
+     transform = get_default_skippd_transform(normalize=True)
+-    tensor = transform(img).unsqueeze(0)  # Shape: (1, 3, 64, 64)
++    tensor = transform(img).unsqueeze(0)
+ 
+     with torch.no_grad():
+-        pred_kw = model(tensor).item()
++        pred_kw = float(model(tensor).item())
++
++    if not np.isfinite(pred_kw):
++        raise RuntimeError(
++            "The model produced an invalid prediction. "
++            "Please try another image."
++        )
+ 
+-    return float(max(0.0, pred_kw))
++    # PV power cannot be negative; warn before returning the projected value.
++    if pred_kw < 0.0:
++        LOGGER.warning("Solar model produced a negative PV estimate (%.6f kW); clipped to zero", pred_kw)
++    return max(0.0, pred_kw)
+ 
+ 
+ @st.cache_data
+@@ -181,8 +271,9 @@ def get_solar_nowcasting_test_evaluation(max_samples: int = 260) -> Dict[str, An
+         with torch.no_grad():
+             preds = model(batch).cpu().numpy().flatten()
+ 
+-        actuals = np.maximum(0.0, df["pv"].values)
+-        preds = np.maximum(0.0, preds)
++        actuals = _validate_nonnegative_targets(df["pv"].values, "PV power")
++        raw_preds = preds.copy()
++        preds, negative_count = _project_nonnegative_predictions(raw_preds, "PV power")
+         times = [t.strftime("%H:%M") for t in df["time"]]
+ 
+         mae = float(np.mean(np.abs(actuals - preds)))
+@@ -192,12 +283,14 @@ def get_solar_nowcasting_test_evaluation(max_samples: int = 260) -> Dict[str, An
+             "timestamps": times,
+             "y_true": actuals,
+             "y_pred": preds,
++            "raw_y_pred": raw_preds,
++            "invalid_prediction_count": negative_count,
+             "mae": round(mae, 2),
+             "rmse": round(rmse, 2),
+             "unit": "kW",
+             "model_name": "ResNet-18 (Fine-Tuned)",
+             "experiment_id": "EXP_SOLAR_DL_S3",
+-            "overall_test_mae": 2.301,
++            "overall_test_mae": get_verified_metric("EXP_SOLAR_DL_S3_TEST", "mae"),
+         }
+     except Exception as exc:
+         st.warning(f"Could not load Solar nowcasting test series: {exc}")
+@@ -252,8 +345,9 @@ def get_weather_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+     p_arr = np.concatenate(preds_scaled)[:n]
+     t_arr = np.concatenate(targets_scaled)[:n]
+ 
+-    y_pred = np.maximum(0.0, test_ds.inverse_transform_targets(p_arr))
+-    y_true = np.maximum(0.0, test_ds.inverse_transform_targets(t_arr))
++    raw_y_pred = test_ds.inverse_transform_targets(p_arr)
++    y_pred, negative_count = _project_nonnegative_predictions(raw_y_pred, "solar irradiance")
++    y_true = _validate_nonnegative_targets(test_ds.inverse_transform_targets(t_arr), "solar irradiance")
+     timestamps = test_ds.target_timestamps[:n]
+ 
+     mae = float(np.mean(np.abs(y_true - y_pred)))
+@@ -265,6 +359,8 @@ def get_weather_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+         "timestamps": timestamps,
+         "y_true": y_true,
+         "y_pred": y_pred,
++        "raw_y_pred": raw_y_pred,
++        "invalid_prediction_count": negative_count,
+         "mae": round(mae, 2),
+         "rmse": round(rmse, 2),
+         "r2": round(r2, 4),
+@@ -313,7 +409,7 @@ def load_wind_forecaster() -> Optional[Tuple[nn.Module, Any, SplitConformalCalib
+                 y_pred_cal.append(p_b.cpu().numpy().flatten())
+                 y_true_cal.append(y_b.cpu().numpy().flatten())
+         y_true_c = cal_ds_w.inverse_transform_targets(np.concatenate(y_true_cal))
+-        y_pred_c = np.maximum(0.0, cal_ds_w.inverse_transform_targets(np.concatenate(y_pred_cal)))
++        y_pred_c = cal_ds_w.inverse_transform_targets(np.concatenate(y_pred_cal))
+ 
+         calibrator = SplitConformalCalibrator().fit(y_true_c, y_pred_c)
+         return model, test_ds_w, calibrator
+@@ -340,8 +436,9 @@ def get_wind_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+             preds_scaled.append(p_b.cpu().numpy().flatten())
+             targets_scaled.append(y_b.cpu().numpy().flatten())
+ 
+-    y_pred = np.maximum(0.0, test_ds.inverse_transform_targets(np.concatenate(preds_scaled)[:n]))
+-    y_true = np.maximum(0.0, test_ds.inverse_transform_targets(np.concatenate(targets_scaled)[:n]))
++    raw_y_pred = test_ds.inverse_transform_targets(np.concatenate(preds_scaled)[:n])
++    y_pred, negative_count = _project_nonnegative_predictions(raw_y_pred, "wind speed")
++    y_true = _validate_nonnegative_targets(test_ds.inverse_transform_targets(np.concatenate(targets_scaled)[:n]), "wind speed")
+     timestamps = test_ds.target_timestamps[:n]
+ 
+     q_90 = calibrator.compute_quantile(0.10)
+@@ -363,6 +460,8 @@ def get_wind_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+         "timestamps": timestamps,
+         "y_true": y_true,
+         "y_pred": y_pred,
++        "raw_y_pred": raw_y_pred,
++        "invalid_prediction_count": negative_count,
+         "y_low_90": y_low_90,
+         "y_upp_90": y_upp_90,
+         "p_true_kw": p_true,
+@@ -415,7 +514,7 @@ def load_demand_forecaster() -> Optional[Tuple[nn.Module, Any, SplitConformalCal
+                 y_pred_cal.append(p_b.cpu().numpy().flatten())
+                 y_true_cal.append(y_b.cpu().numpy().flatten())
+         y_true_c = cal_ds_d.inverse_transform_targets(np.concatenate(y_true_cal))
+-        y_pred_c = np.maximum(0.0, cal_ds_d.inverse_transform_targets(np.concatenate(y_pred_cal)))
++        y_pred_c = cal_ds_d.inverse_transform_targets(np.concatenate(y_pred_cal))
+ 
+         calibrator = SplitConformalCalibrator().fit(y_true_c, y_pred_c)
+         return model, test_ds_d, calibrator
+@@ -442,8 +541,9 @@ def get_demand_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+             preds_scaled.append(p_b.cpu().numpy().flatten())
+             targets_scaled.append(y_b.cpu().numpy().flatten())
+ 
+-    y_pred = np.maximum(0.0, test_ds.inverse_transform_targets(np.concatenate(preds_scaled)[:n]))
+-    y_true = np.maximum(0.0, test_ds.inverse_transform_targets(np.concatenate(targets_scaled)[:n]))
++    raw_y_pred = test_ds.inverse_transform_targets(np.concatenate(preds_scaled)[:n])
++    y_pred, negative_count = _project_nonnegative_predictions(raw_y_pred, "electricity demand")
++    y_true = _validate_nonnegative_targets(test_ds.inverse_transform_targets(np.concatenate(targets_scaled)[:n]), "electricity demand")
+     timestamps = test_ds.target_timestamps[:n]
+ 
+     q_90 = calibrator.compute_quantile(0.10)
+@@ -458,6 +558,8 @@ def get_demand_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+         "timestamps": timestamps,
+         "y_true": y_true,
+         "y_pred": y_pred,
++        "raw_y_pred": raw_y_pred,
++        "invalid_prediction_count": negative_count,
+         "y_low_90": y_low_90,
+         "y_upp_90": y_upp_90,
+         "q_90": round(q_90, 4),
+@@ -474,8 +576,9 @@ def get_demand_test_evaluation(max_samples: int = 500) -> Dict[str, Any]:
+ @st.cache_data
+ def get_benchmark_time_series(duration_hours: int = 240) -> Dict[str, np.ndarray]:
+     """
+-    Get synchronized 240-hour illustrative benchmark time series combining
+-    real Model B (irradiance), Model C (wind), and Model D (demand) test predictions.
++    Get a synthetic benchmark by pairing Model B irradiance, Model C wind, and
++    Model D demand predictions by array position. Their source timestamps differ;
++    this is not a synchronized real-world time series.
+     """
+     w_eval = get_wind_test_evaluation(max_samples=duration_hours)
+     d_eval = get_demand_test_evaluation(max_samples=duration_hours)
+diff --git a/tests/test_decision_support.py b/tests/test_decision_support.py
+index 20178cd..b07c67a 100644
+--- a/tests/test_decision_support.py
++++ b/tests/test_decision_support.py
+@@ -122,6 +122,37 @@ class TestEnergyBalanceConservation:
+ 
+         # Physical conservation: demand perfectly served
+         np.testing.assert_allclose(ts.served_demand + ts.unmet_demand, demand, atol=1e-6)
++        assert m["battery_soc_balance_residual_kwh"] == pytest.approx(0.0, abs=1e-6)
++
++    def test_initial_soc_is_carry_in_not_renewable_generation(self):
++        """Initial stored energy may serve load but must not inflate renewable share."""
++        battery = BatteryConfig(capacity_kwh=100.0, initial_soc_ratio=0.50, min_soc_ratio=0.10)
++        ts, metrics = simulate_energy_dispatch([10.0], [0.0], grid_import_limit_kw=0.0, battery=battery)
++
++        assert ts.battery_discharge[0] == pytest.approx(10.0)
++        assert metrics["renewable_origin_battery_discharge_kwh"] == pytest.approx(0.0)
++        assert metrics["initial_soc_carry_in_discharge_kwh"] == pytest.approx(10.0)
++        assert metrics["renewable_penetration"] == pytest.approx(0.0)
++        assert metrics["terminal_soc_delta_kwh"] < 0.0
++        assert metrics["battery_soc_balance_residual_kwh"] == pytest.approx(0.0, abs=1e-6)
++
++    def test_renewable_origin_storage_is_counted_once(self):
++        """Only the renewable-origin share of discharge contributes to renewable penetration."""
++        battery = BatteryConfig(
++            capacity_kwh=100.0, initial_soc_ratio=0.10, min_soc_ratio=0.10,
++            charge_efficiency=0.90, discharge_efficiency=0.90,
++            max_c_rate_charge=1.0, max_c_rate_discharge=1.0,
++        )
++        ts, metrics = simulate_energy_dispatch(
++            [30.0, 40.0], [50.0, 30.0], grid_import_limit_kw=0.0, battery=battery
++        )
++
++        assert metrics["renewable_origin_battery_discharge_kwh"] == pytest.approx(6.4285714, abs=0.00005)
++        assert metrics["initial_soc_carry_in_discharge_kwh"] == pytest.approx(3.5714286, abs=0.00005)
++        assert metrics["renewable_used_kwh"] + metrics["renewable_origin_battery_discharge_kwh"] <= metrics["served_demand_kwh"] + 1e-6
++        assert metrics["renewable_penetration"] == pytest.approx(66.4285714 / 70.0, abs=0.00005)
++        assert np.all(ts.battery_renewable_soc <= ts.battery_soc + 1e-9)
++        assert metrics["battery_soc_balance_residual_kwh"] == pytest.approx(0.0, abs=1e-6)
+ 
+ 
+ class TestInputValidationAndRejection:
+@@ -362,3 +393,37 @@ class TestScenarioProvenanceLabeling:
+         # Wind cut-in: 2.0 m/s (< 3.0 m/s cut-in) -> 0.0 kWh
+         w_zero = convert_wind_speed_to_generation_kwh([2.0], capacity_kw=100.0)
+         assert w_zero[0] == 0.0
++
++
++
++
++def test_resource_conversions_scale_energy_with_interval_duration():
++    from src.decision_support.scenarios import (
++        convert_irradiance_to_solar_pv_kwh,
++        convert_wind_speed_to_generation_kwh,
++    )
++    # Equal average irradiance over a 2h interval yields twice the energy.
++    solar_1h = convert_irradiance_to_solar_pv_kwh([1000.0], 10.0, time_step_hours=1.0)
++    solar_2h = convert_irradiance_to_solar_pv_kwh([2000.0], 10.0, time_step_hours=2.0)
++    np.testing.assert_allclose(solar_2h, solar_1h * 2.0)
++    wind_1h = convert_wind_speed_to_generation_kwh([12.0], 10.0, time_step_hours=1.0)
++    wind_2h = convert_wind_speed_to_generation_kwh([12.0], 10.0, time_step_hours=2.0)
++    np.testing.assert_allclose(wind_2h, wind_1h * 2.0)
++
++
++def test_cost_model_prices_battery_carry_in_at_grid_rate():
++    from src.decision_support.optimizer import CostModel
++    model = CostModel(grid_energy_rate=0.12)
++    costs = model.compute_total_cost(
++        solar_kw=0.0, wind_kw=0.0, battery_kwh=0.0,
++        grid_import_kwh=0.0, unmet_demand_kwh=0.0, curtailment_kwh=0.0,
++        carry_in_discharge_kwh=10.0,
++    )
++    assert costs["carry_in_energy_cost"] == 1.2
++    assert costs["total_cost"] == 1.2
++
++
++def test_resource_conversions_reject_nonfinite_values():
++    from src.decision_support.scenarios import convert_irradiance_to_solar_pv_kwh
++    with pytest.raises(ValueError, match="finite"):
++        convert_irradiance_to_solar_pv_kwh([float("nan")], 10.0)
+diff --git a/tests/test_frontend.py b/tests/test_frontend.py
+index 7f06818..2bd6074 100644
+--- a/tests/test_frontend.py
++++ b/tests/test_frontend.py
+@@ -256,3 +256,19 @@ class TestPlotlyChartGenerators:
+         # Test compiling app.py code
+         compiled = compile(code, str(app_path), "exec")
+         assert compiled is not None
++
++
++def test_prediction_domain_helpers_project_and_reject_invalid_values():
++    projected, count = ml._project_nonnegative_predictions(
++        np.array([-1.0, 0.0, 2.0]), "test target"
++    )
++    np.testing.assert_array_equal(projected, [0.0, 0.0, 2.0])
++    assert count == 1
++    with pytest.raises(ValueError, match="NaN or infinite"):
++        ml._project_nonnegative_predictions(np.array([float("nan")]), "test target")
++    with pytest.raises(ValueError, match="materially negative"):
++        ml._validate_nonnegative_targets(np.array([-0.1]), "test target")
++    np.testing.assert_array_equal(
++        ml._validate_nonnegative_targets(np.array([-1e-5, 1.0]), "test target"),
++        [0.0, 1.0],
++    )
+diff --git a/tests/test_leakage.py b/tests/test_leakage.py
+index c5b0759..23c0ed3 100644
+--- a/tests/test_leakage.py
++++ b/tests/test_leakage.py
+@@ -240,6 +240,36 @@ class TestNasaLeakage:
+         assert val_target_times.max() < test_target_times.min(), "Val target exceeds Test target timestamp"
+ 
+ 
++def test_chronological_split_honors_all_ratios_after_embargo():
++    """Split fractions apply to retained records; embargo rows are purged separately."""
++    df = pd.DataFrame({"value": np.arange(100)})
++    train, val, test = split_timeseries_chronological(
++        df, train_ratio=0.70, val_ratio=0.15, test_ratio=0.15, embargo_steps=2
++    )
++    assert (len(train), len(val), len(test)) == (67, 14, 15)
++    assert len(train) + len(val) + len(test) + 4 == len(df)
++
++
++def test_chronological_split_legacy_mode_preserves_checkpoint_boundaries():
++    """Explicit compatibility mode reproduces the pre-fix split sizes."""
++    df = pd.DataFrame({"value": np.arange(100)})
++    train, val, test = split_timeseries_chronological(
++        df, train_ratio=0.70, val_ratio=0.15, test_ratio=0.15,
++        embargo_steps=2, ratio_basis="legacy_source"
++    )
++    assert (len(train), len(val), len(test)) == (70, 15, 11)
++
++
++def test_chronological_split_rejects_invalid_ratios_and_short_series():
++    df = pd.DataFrame({"value": np.arange(20)})
++    with pytest.raises(ValueError, match="sum to 1.0"):
++        split_timeseries_chronological(df, train_ratio=0.7, val_ratio=0.2, test_ratio=0.2, embargo_steps=1)
++    with pytest.raises(ValueError, match="too short"):
++        split_timeseries_chronological(
++            df.iloc[:4], train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, embargo_steps=2
++        )
++
++
+ class TestCrossDatasetIsolation:
+     """Verify that independent datasets are never conflated or unified inappropriately."""
+ 

@@ -57,6 +57,36 @@ class TestFrontendDataLoaders:
 class TestModelInferenceIntegration:
     """Test safe inference execution for deep learning models."""
 
+    def test_missing_model_checkpoints_return_unavailable(self, monkeypatch, tmp_path):
+        """All model loaders should report unavailable when their required artifacts are absent."""
+        monkeypatch.setattr(ml, "PROJECT_ROOT", tmp_path)
+        loaders = (
+            ml.load_solar_nowcaster,
+            ml.load_weather_forecaster,
+            ml.load_wind_forecaster,
+            ml.load_demand_forecaster,
+        )
+        evaluators = (
+            ml.get_solar_nowcasting_test_evaluation,
+            ml.get_weather_test_evaluation,
+            ml.get_wind_test_evaluation,
+            ml.get_demand_test_evaluation,
+        )
+        for loader in loaders:
+            loader.clear()
+        for evaluator in evaluators:
+            evaluator.clear()
+        try:
+            for loader in loaders:
+                assert loader() is None
+            for evaluator in evaluators:
+                assert evaluator(max_samples=1) == {}
+        finally:
+            for loader in loaders:
+                loader.clear()
+            for evaluator in evaluators:
+                evaluator.clear()
+
     def test_solar_nowcaster_inference_on_sample_images(self):
         sample_dir = Path("data/sample_images")
         if not sample_dir.exists():
@@ -76,6 +106,19 @@ class TestModelInferenceIntegration:
         with pytest.raises((TypeError, RuntimeError)):
             ml.predict_solar_pv_from_image(12345)
 
+    def test_corrupt_image_upload_has_actionable_validation_error(self, monkeypatch):
+        """Corrupt uploaded bytes are rejected before model inference with a readable message."""
+        monkeypatch.setattr(ml, "load_solar_nowcaster", lambda: object())
+        with pytest.raises(ValueError, match="valid PNG or JPEG"):
+            ml.predict_solar_pv_from_image(b"not an image")
+
+    def test_too_small_image_upload_has_actionable_validation_error(self, monkeypatch):
+        """Very small uploaded images are rejected with the supported minimum dimensions."""
+        monkeypatch.setattr(ml, "load_solar_nowcaster", lambda: object())
+        image = Image.new("RGB", (16, 16))
+        with pytest.raises(ValueError, match="at least 32 x 32"):
+            ml.predict_solar_pv_from_image(image)
+
     def test_solar_nowcasting_test_evaluation(self):
         solar_eval = ml.get_solar_nowcasting_test_evaluation(max_samples=50)
         assert "timestamps" in solar_eval
@@ -94,6 +137,13 @@ class TestModelInferenceIntegration:
         assert len(eval_b["y_pred"]) == 24
         assert eval_b["unit"] == "Wh/m²"
         assert eval_b["mae"] > 0.0
+        assert "projected_mae" in eval_b
+        assert "projected_r2" in eval_b
+        assert eval_b["changed_prediction_count"] == eval_b["invalid_prediction_count"]
+        assert eval_b["invalid_prediction_fraction"] == pytest.approx(eval_b["invalid_prediction_count"] / 24)
+        assert np.isclose(eval_b["mae"], np.mean(np.abs(eval_b["y_true"] - eval_b["raw_y_pred"])), atol=0.01)
+        assert np.isclose(eval_b["projected_mae"], np.mean(np.abs(eval_b["y_true"] - eval_b["y_pred"])), atol=0.01)
+        assert np.isclose(eval_b["projected_r2"], 1 - np.sum((eval_b["y_true"] - eval_b["y_pred"]) ** 2) / np.sum((eval_b["y_true"] - np.mean(eval_b["y_true"])) ** 2), atol=1e-4)
 
     def test_wind_evaluation_series_and_uncertainty(self):
         eval_c = ml.get_wind_test_evaluation(max_samples=24)
@@ -104,6 +154,9 @@ class TestModelInferenceIntegration:
         assert "p_pred_kw" in eval_c
         assert np.all(eval_c["y_low_90"] <= eval_c["y_upp_90"])
         assert np.all(eval_c["y_low_90"] >= 0.0), "Wind lower bounds must be clipped >= 0"
+        assert eval_c["q_90"] == pytest.approx(1.5316, abs=1e-4)
+        assert eval_c["interval_metrics_90"]["n_samples"] == 24
+        assert eval_c["interval_metrics_90"]["mpiw"] == pytest.approx(2 * eval_c["q_90"], abs=1e-3)
 
     def test_demand_evaluation_series_and_uncertainty(self):
         eval_d = ml.get_demand_test_evaluation(max_samples=24)
@@ -113,6 +166,29 @@ class TestModelInferenceIntegration:
         assert "y_upp_90" in eval_d
         assert np.all(eval_d["y_low_90"] <= eval_d["y_upp_90"])
         assert np.all(eval_d["y_low_90"] >= 0.0), "Demand lower bounds must be clipped >= 0"
+        assert eval_d["interval_method"] == "prequential rolling conformal, 168-hour residual window"
+        assert eval_d["fixed_interval_metrics_90"]["n_samples"] == 24
+        assert eval_d["rolling_interval_metrics_90"]["n_samples"] == 24
+        assert eval_d["rolling_valid_count"] == 24
+        assert np.all(eval_d["y_low_90_fixed"] <= eval_d["y_upp_90_fixed"])
+
+    def test_demand_full_test_baseline_and_rolling_metrics_match_series(self):
+        from src.uncertainty.conformal import calculate_interval_metrics
+
+        evaluation = ml.get_demand_test_evaluation(max_samples=10000)
+        n = len(evaluation["y_true"])
+        assert n == 2561
+        assert evaluation["fixed_interval_metrics_90"]["coverage"] == pytest.approx(0.8547, abs=1e-4)
+        assert evaluation["fixed_interval_metrics_80"]["coverage"] == pytest.approx(0.6603, abs=1e-4)
+        rolling = evaluation["rolling_interval_metrics_90"]
+        recomputed = calculate_interval_metrics(
+            evaluation["y_true"], evaluation["y_low_90"], evaluation["y_upp_90"], alpha=0.10
+        )
+        assert rolling == recomputed
+        assert rolling["n_samples"] == evaluation["rolling_valid_count"] == n
+        assert evaluation["rolling_skipped_count"] == 0
+        assert evaluation["rolling_window_hours"] == 168
+        assert np.all(evaluation["y_low_90"] <= evaluation["y_upp_90"])
 
 
 class TestInteractiveSimulatorIntegration:
@@ -242,9 +318,11 @@ class TestPlotlyChartGenerators:
             grid_import=grid_imp,
             curtailment=curtail,
             battery_soc=soc,
+            unmet_demand=np.zeros(10),
         )
         assert fig is not None
         assert len(fig.data) >= 5
+        assert any(trace.name == "Unmet Demand" for trace in fig.data)
 
     def test_app_file_integrity_and_imports(self):
         app_path = Path("app.py")
@@ -256,3 +334,30 @@ class TestPlotlyChartGenerators:
         # Test compiling app.py code
         compiled = compile(code, str(app_path), "exec")
         assert compiled is not None
+
+
+def test_prediction_domain_helpers_project_and_reject_invalid_values():
+    projected, count = ml._project_nonnegative_predictions(
+        np.array([-1.0, 0.0, 2.0]), "test target"
+    )
+    np.testing.assert_array_equal(projected, [0.0, 0.0, 2.0])
+    assert count == 1
+    with pytest.raises(ValueError, match="NaN or infinite"):
+        ml._project_nonnegative_predictions(np.array([float("nan")]), "test target")
+    with pytest.raises(ValueError, match="materially negative"):
+        ml._validate_nonnegative_targets(np.array([-0.1]), "test target")
+    np.testing.assert_array_equal(
+        ml._validate_nonnegative_targets(np.array([-1e-5, 1.0]), "test target"),
+        [0.0, 1.0],
+    )
+
+
+def test_custom_simulation_cost_includes_initial_battery_energy_value():
+    dispatch, metrics, costs = ml.simulate_custom_system(
+        solar_kw=0.0, wind_kw=0.0, battery_kwh=50.0,
+        grid_import_limit_kw=100.0, duration_hours=24,
+    )
+    assert metrics["solar_generation_available_kwh"] == 0.0
+    assert metrics["wind_generation_available_kwh"] == 0.0
+    if metrics["initial_soc_carry_in_discharge_kwh"] > 0:
+        assert costs["carry_in_energy_cost"] > 0.0

@@ -122,6 +122,37 @@ class TestEnergyBalanceConservation:
 
         # Physical conservation: demand perfectly served
         np.testing.assert_allclose(ts.served_demand + ts.unmet_demand, demand, atol=1e-6)
+        assert m["battery_soc_balance_residual_kwh"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_initial_soc_is_carry_in_not_renewable_generation(self):
+        """Initial stored energy may serve load but must not inflate renewable share."""
+        battery = BatteryConfig(capacity_kwh=100.0, initial_soc_ratio=0.50, min_soc_ratio=0.10)
+        ts, metrics = simulate_energy_dispatch([10.0], [0.0], grid_import_limit_kw=0.0, battery=battery)
+
+        assert ts.battery_discharge[0] == pytest.approx(10.0)
+        assert metrics["renewable_origin_battery_discharge_kwh"] == pytest.approx(0.0)
+        assert metrics["initial_soc_carry_in_discharge_kwh"] == pytest.approx(10.0)
+        assert metrics["renewable_penetration"] == pytest.approx(0.0)
+        assert metrics["terminal_soc_delta_kwh"] < 0.0
+        assert metrics["battery_soc_balance_residual_kwh"] == pytest.approx(0.0, abs=1e-6)
+
+    def test_renewable_origin_storage_is_counted_once(self):
+        """Only the renewable-origin share of discharge contributes to renewable penetration."""
+        battery = BatteryConfig(
+            capacity_kwh=100.0, initial_soc_ratio=0.10, min_soc_ratio=0.10,
+            charge_efficiency=0.90, discharge_efficiency=0.90,
+            max_c_rate_charge=1.0, max_c_rate_discharge=1.0,
+        )
+        ts, metrics = simulate_energy_dispatch(
+            [30.0, 40.0], [50.0, 30.0], grid_import_limit_kw=0.0, battery=battery
+        )
+
+        assert metrics["renewable_origin_battery_discharge_kwh"] == pytest.approx(6.4285714, abs=0.00005)
+        assert metrics["initial_soc_carry_in_discharge_kwh"] == pytest.approx(3.5714286, abs=0.00005)
+        assert metrics["renewable_used_kwh"] + metrics["renewable_origin_battery_discharge_kwh"] <= metrics["served_demand_kwh"] + 1e-6
+        assert metrics["renewable_penetration"] == pytest.approx(66.4285714 / 70.0, abs=0.00005)
+        assert np.all(ts.battery_renewable_soc <= ts.battery_soc + 1e-9)
+        assert metrics["battery_soc_balance_residual_kwh"] == pytest.approx(0.0, abs=1e-6)
 
 
 class TestInputValidationAndRejection:
@@ -362,3 +393,123 @@ class TestScenarioProvenanceLabeling:
         # Wind cut-in: 2.0 m/s (< 3.0 m/s cut-in) -> 0.0 kWh
         w_zero = convert_wind_speed_to_generation_kwh([2.0], capacity_kw=100.0)
         assert w_zero[0] == 0.0
+
+
+
+
+def test_resource_conversions_scale_energy_with_interval_duration():
+    from src.decision_support.scenarios import (
+        convert_irradiance_to_solar_pv_kwh,
+        convert_wind_speed_to_generation_kwh,
+    )
+    # Equal average irradiance over a 2h interval yields twice the energy.
+    solar_1h = convert_irradiance_to_solar_pv_kwh([1000.0], 10.0, time_step_hours=1.0)
+    solar_2h = convert_irradiance_to_solar_pv_kwh([2000.0], 10.0, time_step_hours=2.0)
+    np.testing.assert_allclose(solar_2h, solar_1h * 2.0)
+    wind_1h = convert_wind_speed_to_generation_kwh([12.0], 10.0, time_step_hours=1.0)
+    wind_2h = convert_wind_speed_to_generation_kwh([12.0], 10.0, time_step_hours=2.0)
+    np.testing.assert_allclose(wind_2h, wind_1h * 2.0)
+
+
+def test_cost_model_prices_battery_carry_in_at_grid_rate():
+    from src.decision_support.optimizer import CostModel
+    model = CostModel(grid_energy_rate=0.12)
+    costs = model.compute_total_cost(
+        solar_kw=0.0, wind_kw=0.0, battery_kwh=0.0,
+        grid_import_kwh=0.0, unmet_demand_kwh=0.0, curtailment_kwh=0.0,
+        carry_in_discharge_kwh=10.0,
+    )
+    assert costs["carry_in_energy_cost"] == 1.2
+    assert costs["total_cost"] == 1.2
+
+
+def test_resource_conversions_reject_nonfinite_values():
+    from src.decision_support.scenarios import convert_irradiance_to_solar_pv_kwh
+    with pytest.raises(ValueError, match="finite"):
+        convert_irradiance_to_solar_pv_kwh([float("nan")], 10.0)
+
+
+def test_cyclic_terminal_soc_option_accepts_balanced_repeated_horizon():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.50)
+    _, metrics = simulate_energy_dispatch(
+        demand_kwh=[0.0, 4.14], renewable_available_kwh=[5.0, 0.0],
+        battery=battery, terminal_soc_ratio=0.50,
+    )
+    assert metrics["final_soc_kwh"] == pytest.approx(metrics["initial_soc_kwh"], abs=1e-6)
+
+
+def test_cyclic_dispatch_reschedules_to_reach_terminal_soc():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.50)
+    ts, metrics = simulate_energy_dispatch(
+        demand_kwh=[0.0, 4.14], renewable_available_kwh=[5.0, 0.0],
+        battery=battery, terminal_soc_ratio=0.50,
+    )
+    assert metrics["final_soc_kwh"] == pytest.approx(metrics["initial_soc_kwh"], abs=1e-6)
+    assert metrics["terminal_soc_delta_kwh"] == pytest.approx(0.0, abs=1e-6)
+    assert metrics["unmet_demand_kwh"] == pytest.approx(0.0, abs=1e-6)
+    assert metrics["cyclic_terminal_soc_enforced"] is True
+    assert metrics["renewable_origin_battery_discharge_kwh"] <= metrics["battery_discharge_kwh"]
+    assert np.all(ts.battery_soc >= 1.0 - 1e-6)
+    assert np.all(ts.battery_soc <= 9.5 + 1e-6)
+    assert np.all((ts.battery_charge <= 1e-7) | (ts.battery_discharge <= 1e-7))
+    assert np.all(ts.battery_charge <= 5.0 + 1e-6)
+    assert np.all(ts.battery_discharge <= 5.0 + 1e-6)
+    np.testing.assert_allclose(
+        ts.battery_soc,
+        np.r_[5.0, ts.battery_soc[:-1]]
+        + ts.battery_charge * battery.charge_efficiency
+        - ts.battery_discharge / battery.discharge_efficiency,
+        atol=1e-6,
+    )
+
+
+def test_cyclic_dispatch_reports_true_infeasibility():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.50)
+    with pytest.raises(ValueError, match="Cyclic terminal SOC infeasible"):
+        simulate_energy_dispatch(
+            demand_kwh=[0.0], renewable_available_kwh=[0.0],
+            battery=battery, terminal_soc_ratio=0.75,
+        )
+
+
+def test_cyclic_dispatch_respects_grid_limit_and_reports_unmet_load():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.50)
+    ts, metrics = simulate_energy_dispatch(
+        demand_kwh=[5.0], renewable_available_kwh=[0.0], grid_import_limit_kw=2.0,
+        battery=battery, terminal_soc_ratio=0.50,
+    )
+    assert ts.grid_import[0] == pytest.approx(2.0)
+    assert ts.unmet_demand[0] == pytest.approx(3.0)
+    assert metrics["final_soc_kwh"] == pytest.approx(5.0)
+
+
+def test_battery_at_minimum_soc_cannot_discharge():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.10)
+    ts, metrics = simulate_energy_dispatch([4.0], [0.0], battery=battery)
+    assert ts.battery_discharge[0] == pytest.approx(0.0)
+    assert ts.grid_import[0] == pytest.approx(4.0)
+    assert metrics["final_soc_kwh"] == pytest.approx(1.0)
+
+
+def test_battery_at_maximum_soc_curtails_unstorable_renewable():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.95)
+    ts, metrics = simulate_energy_dispatch([0.0], [5.0], battery=battery)
+    assert ts.battery_charge[0] == pytest.approx(0.0)
+    assert ts.curtailment[0] == pytest.approx(5.0)
+    assert metrics["final_soc_kwh"] == pytest.approx(9.5)
+
+
+def test_noncyclic_dispatch_still_allows_intentional_initial_energy_use():
+    from src.decision_support.energy_balance import BatteryConfig, simulate_energy_dispatch
+    battery = BatteryConfig(capacity_kwh=10.0, initial_soc_ratio=0.50)
+    _, metrics = simulate_energy_dispatch(
+        demand_kwh=[4.0], renewable_available_kwh=[0.0], battery=battery
+    )
+    assert metrics["initial_soc_carry_in_discharge_kwh"] > 0.0
+    assert metrics["final_soc_kwh"] < metrics["initial_soc_kwh"]

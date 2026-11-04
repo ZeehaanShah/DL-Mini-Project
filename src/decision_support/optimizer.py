@@ -57,6 +57,7 @@ class CostModel:
         grid_import_kwh: float,
         unmet_demand_kwh: float,
         curtailment_kwh: float,
+        carry_in_discharge_kwh: float = 0.0,
     ) -> Dict[str, float]:
         raw_capex = (
             self.solar_capex_per_kw * solar_kw
@@ -73,10 +74,12 @@ class CostModel:
             self.grid_energy_rate * grid_import_kwh
             + self.unmet_demand_penalty * unmet_demand_kwh
             + self.curtailment_penalty * curtailment_kwh
+            + self.grid_energy_rate * carry_in_discharge_kwh
         )
         return {
             "capex": round(capex, 2),
             "opex": round(opex, 2),
+            "carry_in_energy_cost": round(self.grid_energy_rate * carry_in_discharge_kwh, 2),
             "total_cost": round(capex + opex, 2),
         }
 
@@ -146,6 +149,7 @@ def optimize_energy_mix(
         grid_import_kwh=base_metrics["grid_import_kwh"],
         unmet_demand_kwh=base_metrics["unmet_demand_kwh"],
         curtailment_kwh=base_metrics["curtailment_kwh"],
+        carry_in_discharge_kwh=base_metrics["initial_soc_carry_in_discharge_kwh"],
     )
 
     # 2. Systematically Evaluate All Grid Candidates
@@ -158,9 +162,9 @@ def optimize_energy_mix(
     best_cap_dict = None
 
     for s_kw in solar_grid_kw:
-        s_gen = convert_irradiance_to_solar_pv_kwh(solar_irradiance_wh_m2, capacity_kw=s_kw)
+        s_gen = convert_irradiance_to_solar_pv_kwh(solar_irradiance_wh_m2, capacity_kw=s_kw, time_step_hours=time_step_hours)
         for w_kw in wind_grid_kw:
-            w_gen = convert_wind_speed_to_generation_kwh(wind_speed_ms, capacity_kw=w_kw)
+            w_gen = convert_wind_speed_to_generation_kwh(wind_speed_ms, capacity_kw=w_kw, time_step_hours=time_step_hours)
             r_total = s_gen + w_gen
 
             for b_kwh in battery_grid_kwh:
@@ -181,6 +185,7 @@ def optimize_energy_mix(
                     grid_import_kwh=m["grid_import_kwh"],
                     unmet_demand_kwh=m["unmet_demand_kwh"],
                     curtailment_kwh=m["curtailment_kwh"],
+                    carry_in_discharge_kwh=m["initial_soc_carry_in_discharge_kwh"],
                 )
 
                 # Determine objective score

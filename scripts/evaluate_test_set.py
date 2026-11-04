@@ -13,6 +13,7 @@ Usage:
 """
 import argparse
 import sys
+import re
 from pathlib import Path
 
 # Ensure project root is in sys.path and initialize Windows PyTorch DLLs first
@@ -39,8 +40,8 @@ def parse_args():
     parser.add_argument("--solar-checkpoint", type=str, default=None, help="Path to best solar checkpoint .pt")
     parser.add_argument("--solar-mode", type=str, default="fine_tune", choices=["feature_extractor", "fine_tune", "scratch"])
     parser.add_argument("--nasa-checkpoint", type=str, default=None, help="Path to best NASA checkpoint .pt")
-    parser.add_argument("--nasa-hidden-dim", type=int, default=64)
-    parser.add_argument("--nasa-num-layers", type=int, default=2)
+    parser.add_argument("--nasa-hidden-dim", type=int, default=None, help="Optional architecture override; otherwise inferred from checkpoint")
+    parser.add_argument("--nasa-num-layers", type=int, default=None, help="Optional architecture override; otherwise inferred from checkpoint")
     parser.add_argument("--batch-size", type=int, default=32)
     return parser.parse_args()
 
@@ -121,8 +122,30 @@ def evaluate_solar_test_set(checkpoint_path: Path, mode: str, batch_size: int = 
 def evaluate_nasa_test_set(checkpoint_path: Path, hidden_dim: int, num_layers: int, batch_size: int = 32) -> dict:
     print("\n" + "=" * 70)
     print("EVALUATING MODEL B ON HELD-OUT NASA POWER TEST SET")
-    print(f"Checkpoint: {checkpoint_path} | Hidden: {hidden_dim} | Layers: {num_layers}")
+    print(f"Checkpoint: {checkpoint_path}")
     print("=" * 70)
+
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    state = checkpoint.get("model_state_dict", checkpoint)
+    first_layer = state.get("lstm.weight_hh_l0")
+    if first_layer is None:
+        raise ValueError("Checkpoint does not contain lstm.weight_hh_l0; cannot infer WeatherLSTM architecture")
+    inferred_hidden = int(first_layer.shape[1])
+    layer_ids = [
+        int(match.group(1))
+        for key in state
+        if (match := re.match(r"lstm\.weight_hh_l(\d+)$", key))
+    ]
+    inferred_layers = max(layer_ids) + 1 if layer_ids else 1
+    inferred_input = int(state["lstm.weight_ih_l0"].shape[1])
+    if inferred_input != 4:
+        raise ValueError(f"Checkpoint expects {inferred_input} input features; this NASA builder supplies 4")
+    if hidden_dim is not None and hidden_dim != inferred_hidden:
+        raise ValueError(f"Requested hidden_dim={hidden_dim}, but checkpoint requires {inferred_hidden}")
+    if num_layers is not None and num_layers != inferred_layers:
+        raise ValueError(f"Requested num_layers={num_layers}, but checkpoint requires {inferred_layers}")
+    hidden_dim, num_layers = inferred_hidden, inferred_layers
+    print(f"Inferred checkpoint architecture: input=4, hidden={hidden_dim}, layers={num_layers}")
 
     nasa_csv = PROJECT_ROOT / "data" / "raw" / "nasa_power" / "POWER_Point_Hourly_20230101_20231231_019d08N_072d88E_LST.csv"
 
@@ -141,8 +164,7 @@ def evaluate_nasa_test_set(checkpoint_path: Path, hidden_dim: int, num_layers: i
     print(f"Test Windows: {len(test_ds):,}")
 
     model = WeatherLSTM(input_dim=4, hidden_dim=hidden_dim, num_layers=num_layers)
-    checkpoint = torch.load(checkpoint_path, map_location="cpu")
-    model.load_state_dict(checkpoint["model_state_dict"])
+    model.load_state_dict(state)
 
     unscaler = lambda arr: test_ds.inverse_transform_targets(arr)
 

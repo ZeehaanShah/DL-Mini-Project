@@ -119,6 +119,71 @@ def calculate_interval_metrics(
     }
 
 
+def predict_rolling_conformal_intervals(
+    y_calibration: Union[np.ndarray, torch.Tensor],
+    y_pred_calibration: Union[np.ndarray, torch.Tensor],
+    y_observed: Union[np.ndarray, torch.Tensor],
+    y_pred: Union[np.ndarray, torch.Tensor],
+    alpha: float = 0.10,
+    window_size: int = 168,
+    clip_min: Optional[float] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return causal rolling intervals, formed before each observed outcome is added.
+
+    A full window of finite chronological calibration residuals is required at
+    initialization. Missing evaluation targets do not update calibration; a
+    missing forecast yields NaN bounds and is excluded from interval metrics.
+    This prequential procedure has no exchangeability-based coverage guarantee.
+    """
+    if not (0.0 < alpha < 1.0):
+        raise ValueError(f"Significance level alpha must be strictly between 0 and 1; got {alpha}")
+    if not isinstance(window_size, (int, np.integer)) or window_size <= 0:
+        raise ValueError("window_size must be a positive integer")
+
+    def allow_missing(values: Union[np.ndarray, torch.Tensor], name: str) -> np.ndarray:
+        if isinstance(values, torch.Tensor):
+            values = values.detach().cpu().numpy()
+        array = np.asarray(values, dtype=np.float64)
+        if array.ndim > 1 and array.size != max(array.shape):
+            raise ValueError(f"'{name}' must be 1-dimensional; got shape {array.shape}")
+        flat = array.ravel()
+        if np.isinf(flat).any():
+            raise ValueError(f"'{name}' cannot contain infinite values")
+        return flat
+
+    y_cal = _to_1d_numpy(y_calibration, "y_calibration")
+    p_cal = _to_1d_numpy(y_pred_calibration, "y_pred_calibration")
+    y_obs = allow_missing(y_observed, "y_observed")
+    p_eval = allow_missing(y_pred, "y_pred")
+    if len(y_cal) != len(p_cal):
+        raise ValueError("Calibration targets and predictions must have identical lengths")
+    if len(y_obs) != len(p_eval):
+        raise ValueError("Observed targets and predictions must have identical lengths")
+    if len(y_cal) < window_size:
+        raise ValueError(
+            f"Insufficient calibration history: need {window_size} valid residuals, got {len(y_cal)}"
+        )
+
+    residuals = list(np.abs(y_cal - p_cal)[-window_size:])
+    lower = np.full(len(p_eval), np.nan, dtype=np.float64)
+    upper = np.full(len(p_eval), np.nan, dtype=np.float64)
+    quantiles = np.full(len(p_eval), np.nan, dtype=np.float64)
+    for i, prediction in enumerate(p_eval):
+        if not np.isfinite(prediction):
+            continue
+        scores = np.asarray(residuals[-window_size:], dtype=np.float64)
+        rank = min(max(int(np.ceil((len(scores) + 1) * (1.0 - alpha))), 1), len(scores))
+        quantile = float(np.partition(scores, rank - 1)[rank - 1])
+        lo, hi = prediction - quantile, prediction + quantile
+        if clip_min is not None:
+            lo, hi = max(float(clip_min), lo), max(float(clip_min), hi)
+        lower[i], upper[i], quantiles[i] = lo, hi, quantile
+        # Update only after forming this forecast's bounds; skip missing outcomes.
+        if np.isfinite(y_obs[i]):
+            residuals.append(abs(float(y_obs[i] - prediction)))
+    return lower, upper, quantiles
+
+
 class SplitConformalCalibrator:
     """
     Split Conformal Prediction calibrator for regression models.

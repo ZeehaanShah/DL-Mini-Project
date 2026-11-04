@@ -25,7 +25,13 @@
       "served_demand_kwh": 11788.5773,
       "renewable_used_kwh": 0.0,
       "battery_discharge_kwh": 0.0,
+      "renewable_origin_battery_discharge_kwh": 0.0,
+      "initial_soc_carry_in_discharge_kwh": 0.0,
       "battery_charge_kwh": 0.0,
+      "initial_soc_kwh": 0.0,
+      "final_soc_kwh": 0.0,
+      "terminal_soc_delta_kwh": 0.0,
+      "battery_soc_balance_residual_kwh": 0.0,
       "grid_import_kwh": 11788.5773,
       "unmet_demand_kwh": 0.0,
       "curtailment_kwh": 0.0,
@@ -41,6 +47,7 @@
     "costs": {
       "capex": 0.0,
       "opex": 1414.63,
+      "carry_in_energy_cost": 0.0,
       "total_cost": 1414.63
     }
   },
@@ -57,11 +64,17 @@
       "served_demand_kwh": 11788.5773,
       "renewable_used_kwh": 3647.2193,
       "battery_discharge_kwh": 870.3422,
-      "battery_charge_kwh": 941.3305,
+      "renewable_origin_battery_discharge_kwh": 778.3422,
+      "initial_soc_carry_in_discharge_kwh": 92.0,
+      "battery_charge_kwh": 941.3306,
+      "initial_soc_kwh": 100.0,
+      "final_soc_kwh": 20.0,
+      "terminal_soc_delta_kwh": -80.0,
+      "battery_soc_balance_residual_kwh": 0.0,
       "grid_import_kwh": 7271.0158,
       "unmet_demand_kwh": 0.0,
       "curtailment_kwh": 470.1475,
-      "renewable_penetration": 0.3832,
+      "renewable_penetration": 0.3754,
       "direct_renewable_share": 0.3094,
       "grid_dependence_fraction": 0.6168,
       "loss_of_load_fraction": 0.0,
@@ -72,8 +85,9 @@
     },
     "costs": {
       "capex": 232.88,
-      "opex": 877.22,
-      "total_cost": 1110.1
+      "opex": 888.26,
+      "carry_in_energy_cost": 11.04,
+      "total_cost": 1121.14
     },
     "comparison_vs_baseline": {
       "baseline_grid_import_kwh": 11788.5773,
@@ -83,10 +97,10 @@
       "baseline_unmet_kwh": 0.0,
       "optimized_unmet_kwh": 0.0,
       "baseline_total_cost": 1414.63,
-      "optimized_total_cost": 1110.1,
-      "cost_diff": -304.53,
-      "cost_savings_pct": 21.53,
-      "renewable_penetration_achieved": 0.3832
+      "optimized_total_cost": 1121.14,
+      "cost_diff": -293.49,
+      "cost_savings_pct": 20.75,
+      "renewable_penetration_achieved": 0.3754
     }
   },
   "grid_optimal_configuration": {
@@ -102,11 +116,17 @@
       "served_demand_kwh": 11788.5773,
       "renewable_used_kwh": 6040.3265,
       "battery_discharge_kwh": 692.069,
+      "renewable_origin_battery_discharge_kwh": 600.0714,
+      "initial_soc_carry_in_discharge_kwh": 91.9975,
       "battery_charge_kwh": 730.7053,
+      "initial_soc_kwh": 100.0,
+      "final_soc_kwh": 20.0,
+      "terminal_soc_delta_kwh": -80.0,
+      "battery_soc_balance_residual_kwh": 0.0,
       "grid_import_kwh": 5056.1818,
       "unmet_demand_kwh": 0.0,
       "curtailment_kwh": 4652.5958,
-      "renewable_penetration": 0.5711,
+      "renewable_penetration": 0.5633,
       "direct_renewable_share": 0.5124,
       "grid_dependence_fraction": 0.4289,
       "loss_of_load_fraction": 0.0,
@@ -117,8 +137,9 @@
     },
     "costs": {
       "capex": 726.03,
-      "opex": 653.27,
-      "total_cost": 1379.3
+      "opex": 664.31,
+      "carry_in_energy_cost": 11.04,
+      "total_cost": 1390.33
     },
     "comparison_vs_baseline": {
       "baseline_grid_import_kwh": 11788.5773,
@@ -128,10 +149,10 @@
       "baseline_unmet_kwh": 0.0,
       "optimized_unmet_kwh": 0.0,
       "baseline_total_cost": 1414.63,
-      "optimized_total_cost": 1379.3,
-      "cost_diff": -35.33,
-      "cost_savings_pct": 2.5,
-      "renewable_penetration_achieved": 0.5711
+      "optimized_total_cost": 1390.33,
+      "cost_diff": -24.3,
+      "cost_savings_pct": 1.72,
+      "renewable_penetration_achieved": 0.5633
     }
   },
   "uncertainty_stress_evaluation": {
@@ -139,12 +160,12 @@
     "scenarios": [
       {
         "scenario": "Conservative (Stress)",
-        "demand_kwh": 12931.6278,
+        "demand_kwh": 12931.6279,
         "renewable_kwh": 4299.8928,
-        "grid_import_kwh": 8765.2138,
+        "grid_import_kwh": 8765.2139,
         "unmet_demand_kwh": 0.0,
         "curtailment_kwh": 92.1233,
-        "renewable_penetration": 0.3222,
+        "renewable_penetration": 0.3151,
         "loss_of_load_fraction": 0.0,
         "loss_of_load_hours": 0
       },
@@ -155,18 +176,18 @@
         "grid_import_kwh": 7271.0158,
         "unmet_demand_kwh": 0.0,
         "curtailment_kwh": 470.1475,
-        "renewable_penetration": 0.3832,
+        "renewable_penetration": 0.3754,
         "loss_of_load_fraction": 0.0,
         "loss_of_load_hours": 0
       },
       {
         "scenario": "Favorable (Optimistic)",
-        "demand_kwh": 10645.5267,
+        "demand_kwh": 10645.5268,
         "renewable_kwh": 5817.502,
         "grid_import_kwh": 5917.1998,
         "unmet_demand_kwh": 0.0,
         "curtailment_kwh": 978.4922,
-        "renewable_penetration": 0.4442,
+        "renewable_penetration": 0.4355,
         "loss_of_load_fraction": 0.0,
         "loss_of_load_hours": 0
       }

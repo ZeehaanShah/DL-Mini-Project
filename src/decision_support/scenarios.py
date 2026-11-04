@@ -72,6 +72,7 @@ def convert_irradiance_to_solar_pv_kwh(
     capacity_kw: float,
     standard_test_irradiance: float = 1000.0,
     performance_ratio: float = 0.78,
+    time_step_hours: float = 1.0,
 ) -> np.ndarray:
     """
     Convert surface solar irradiance (Wh/m²) to estimated solar PV electricity generation (kWh).
@@ -95,19 +96,25 @@ def convert_irradiance_to_solar_pv_kwh(
         1D float64 array of estimated solar electricity generation in kWh.
     """
     irr = np.asarray(irradiance_wh_m2, dtype=np.float64)
+    if not np.isfinite(irr).all():
+        raise ValueError("Irradiance must contain only finite values")
     if np.any(irr < -1e-6):
         raise ValueError("Irradiance cannot be negative")
+    if not np.isfinite([capacity_kw, standard_test_irradiance, performance_ratio, time_step_hours]).all():
+        raise ValueError("Solar conversion parameters must be finite")
+    if time_step_hours <= 0.0:
+        raise ValueError("time_step_hours must be strictly positive")
     if capacity_kw < 0.0:
         raise ValueError("Solar capacity must be non-negative")
     if standard_test_irradiance <= 0.0 or performance_ratio <= 0.0:
         raise ValueError("STC irradiance and performance ratio must be strictly positive")
 
     # Hourly generation in kWh
-    norm_irr = np.maximum(irr, 0.0) / standard_test_irradiance
-    raw_gen = capacity_kw * norm_irr * performance_ratio
+    norm_irr = np.maximum(irr, 0.0) / (standard_test_irradiance * time_step_hours)
+    raw_gen = capacity_kw * norm_irr * performance_ratio * time_step_hours
 
-    # Inverter capacity clipping
-    gen_clipped = np.minimum(raw_gen, capacity_kw)
+    # Inverter power limit integrated over the interval.
+    gen_clipped = np.minimum(raw_gen, capacity_kw * time_step_hours)
     return gen_clipped.astype(np.float64)
 
 
@@ -118,6 +125,7 @@ def convert_wind_speed_to_generation_kwh(
     cut_in_speed: float = 3.0,
     rated_speed: float = 12.0,
     cut_out_speed: float = 25.0,
+    time_step_hours: float = 1.0,
 ) -> np.ndarray:
     """
     Convert wind speed (m/s) to estimated electrical generation (kWh) for a specified wind capacity.
@@ -139,8 +147,14 @@ def convert_wind_speed_to_generation_kwh(
         1D float64 array of estimated wind electricity generation in kWh per hour.
     """
     ws = np.asarray(wind_speed_ms, dtype=np.float64)
+    if not np.isfinite(ws).all():
+        raise ValueError("Wind speed must contain only finite values")
     if np.any(ws < -1e-6):
         raise ValueError("Wind speed cannot be negative")
+    if not np.isfinite([capacity_kw, reference_rated_power_kw, cut_in_speed, rated_speed, cut_out_speed, time_step_hours]).all():
+        raise ValueError("Wind conversion parameters must be finite")
+    if time_step_hours <= 0.0:
+        raise ValueError("time_step_hours must be strictly positive")
     if capacity_kw < 0.0:
         raise ValueError("Wind capacity must be non-negative")
 
@@ -157,7 +171,7 @@ def convert_wind_speed_to_generation_kwh(
     power_fraction[rated_mask] = 1.0
 
     # Scaled generation in kWh (Power * 1h)
-    gen = capacity_kw * power_fraction
+    gen = capacity_kw * power_fraction * time_step_hours
     return gen.astype(np.float64)
 
 
@@ -173,10 +187,11 @@ def build_synthetic_hybrid_benchmark_scenario(
     """
     Construct a clearly labelled illustrative multimodal energy-mix benchmark.
 
-    DISCLAIMER: Combines characteristic temporal signatures from Model B (Mumbai irradiance),
-    Model C (Gujarat wind speed), and Model D (Orlando demand) into a synchronized 1-hour
-    interval sequence for decision-support algorithm validation.
-    Does NOT claim real-world co-location or synchronized sensor acquisition.
+    DISCLAIMER: Combines characteristic profiles from Model B (Mumbai irradiance),
+    Model C (Gujarat wind speed), and Model D (Orlando demand) by array position.
+    Their timestamps are not aligned and the result is not a synchronized physical time series.
+    It is only a synthetic decision-support software benchmark and does NOT claim
+    real-world co-location or synchronized sensor acquisition.
     """
     n = min(len(solar_irradiance_wh_m2), len(wind_speed_ms), len(demand_kwh), n_hours)
 

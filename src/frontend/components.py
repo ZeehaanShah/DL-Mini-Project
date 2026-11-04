@@ -6,59 +6,62 @@ robust sidebar visibility, and zero-indent HTML rendering to eliminate code-bloc
 from typing import Any, Dict, List, Optional
 import streamlit as st
 
+from src.frontend.theme import css_variables, get_active_theme_mode
+
 
 def apply_custom_styles() -> None:
     """
     Inject high-contrast, WCAG AA compliant light-theme CSS styling.
     Strictly adheres to recommended design tokens:
-    - Main page background: #F8FAFC
-    - Card/Panel background: #FFFFFF
-    - Primary text: #172033
-    - Secondary text: #475569
-    - Muted text: #64748B
-    - Primary green: #047857
-    - Primary blue: #0369A1
-    - Borders: #CBD5E1
-    - Sidebar background: #FFFFFF
-    - Sidebar text: #334155
-    - Active sidebar background: #D1FAE5
-    - Active sidebar text: #065F46
-    - Warning background: #FFFBEB
-    - Warning text: #92400E
-    - Warning border: #F59E0B
+    - Main page background: var(--canvas)
+    - Card/Panel background: var(--surface)
+    - Primary text: var(--text-primary)
+    - Secondary text: var(--text-secondary)
+    - Muted text: var(--text-muted)
+    - Primary green: var(--brand)
+    - Primary blue: var(--blue)
+    - Borders: var(--border)
+    - Sidebar background: var(--surface)
+    - Sidebar text: var(--text-secondary)
+    - Active sidebar background: var(--success-surface)
+    - Active sidebar text: var(--brand-strong)
+    - Warning background: var(--warning-surface)
+    - Warning text: var(--warning-text)
+    - Warning border: var(--warning-accent)
     """
     css_content = """<style>
 /* Modern typography import */
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+__THEME_VARIABLES__
 
 /* Global Application Typography and Canvas */
 html, body, [class*="css"] {
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    color: #172033;
+    color: var(--text-primary);
 }
 
 .stApp {
-    background-color: #F8FAFC !important;
-    color: #172033 !important;
+    background-color: var(--canvas) !important;
+    color: var(--text-primary) !important;
 }
 
 /* Headings and Text Elements */
 h1, h2, h3, h4, h5, h6 {
-    color: #172033 !important;
+    color: var(--text-primary) !important;
     font-weight: 700 !important;
     letter-spacing: -0.015em !important;
 }
 
 p, span, label {
-    color: #172033;
+    color: var(--text-primary);
 }
 
 /* Top Navigation Bar */
 .top-navbar-card {
-    background: #FFFFFF;
+    background: var(--surface);
     padding: 0.85rem 1.5rem;
     border-radius: 12px;
-    border: 1px solid #CBD5E1;
+    border: 1px solid var(--border);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     margin-bottom: 1.25rem;
 }
@@ -72,12 +75,12 @@ p, span, label {
 .brand-logo {
     width: 44px;
     height: 44px;
-    background: linear-gradient(135deg, #047857 0%, #065F46 100%);
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 100%);
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #FFFFFF;
+    color: var(--text-on-brand);
     font-size: 1.35rem;
     font-weight: 800;
     box-shadow: 0 2px 6px rgba(4, 120, 87, 0.25);
@@ -86,7 +89,7 @@ p, span, label {
 .brand-title {
     font-size: 1.4rem;
     font-weight: 800;
-    color: #172033;
+    color: var(--text-primary);
     line-height: 1.2;
     margin: 0;
     letter-spacing: -0.015em;
@@ -94,7 +97,7 @@ p, span, label {
 
 .brand-subtitle {
     font-size: 0.82rem;
-    color: #475569;
+    color: var(--text-secondary);
     font-weight: 500;
     margin: 0;
 }
@@ -103,9 +106,9 @@ p, span, label {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    background: #D1FAE5;
-    color: #065F46;
-    border: 1px solid #A7F3D0;
+    background: var(--success-surface);
+    color: var(--brand-strong);
+    border: 1px solid var(--success-border);
     padding: 0.42rem 0.85rem;
     border-radius: 9999px;
     font-size: 0.82rem;
@@ -115,7 +118,7 @@ p, span, label {
 .status-dot {
     width: 8px;
     height: 8px;
-    background-color: #047857;
+    background-color: var(--brand);
     border-radius: 50%;
     display: inline-block;
 }
@@ -124,7 +127,7 @@ p, span, label {
 .page-hero-title {
     font-size: 2.0rem;
     font-weight: 800;
-    color: #172033;
+    color: var(--text-primary);
     letter-spacing: -0.025em;
     margin-bottom: 0.35rem;
     line-height: 1.2;
@@ -132,7 +135,7 @@ p, span, label {
 
 .page-hero-subtitle {
     font-size: 1.02rem;
-    color: #475569;
+    color: var(--text-secondary);
     font-weight: 400;
     margin-bottom: 1.25rem;
     line-height: 1.45;
@@ -142,7 +145,7 @@ p, span, label {
 .section-heading {
     font-size: 1.25rem;
     font-weight: 700;
-    color: #172033;
+    color: var(--text-primary);
     margin-top: 1.75rem;
     margin-bottom: 0.85rem;
     display: flex;
@@ -152,8 +155,8 @@ p, span, label {
 
 /* SIDEBAR STYLING - High Contrast & Visible States */
 section[data-testid="stSidebar"] {
-    background-color: #FFFFFF !important;
-    border-right: 1px solid #CBD5E1 !important;
+    background-color: var(--text-on-brand) !important;
+    border-right: 1px solid var(--border) !important;
 }
 
 /* Radio Navigation Buttons */
@@ -168,7 +171,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label {
     transition: all 0.15s ease !important;
     font-size: 0.92rem !important;
     font-weight: 600 !important;
-    color: #334155 !important;
+    color: var(--text-secondary) !important;
     background-color: transparent !important;
     border-left: 3px solid transparent !important;
     border: 1px solid transparent !important;
@@ -178,41 +181,41 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label {
 section[data-testid="stSidebar"] div[role="radiogroup"] > label p,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label span,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label div {
-    color: #334155 !important;
+    color: var(--text-secondary) !important;
     font-size: 0.92rem !important;
     font-weight: 600 !important;
 }
 
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover {
-    background-color: #F1F5F9 !important;
-    border-color: #E2E8F0 !important;
+    background-color: var(--surface-muted) !important;
+    border-color: var(--border) !important;
 }
 
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover p,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:hover span {
-    color: #172033 !important;
+    color: var(--text-primary) !important;
 }
 
 /* Active Radio Item */
 section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"],
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {
-    background-color: #D1FAE5 !important;
-    border-left: 4px solid #047857 !important;
-    border-color: #A7F3D0 #A7F3D0 #A7F3D0 #047857 !important;
+    background-color: var(--success-surface) !important;
+    border-left: 4px solid var(--brand) !important;
+    border-color: var(--success-border) var(--success-border) var(--success-border) var(--brand) !important;
 }
 
 section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] p,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label[data-checked="true"] span,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p,
 section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) span {
-    color: #065F46 !important;
+    color: var(--brand-strong) !important;
     font-weight: 700 !important;
 }
 
 /* Sidebar Scope Card */
 .scope-card {
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 1rem;
     margin-top: 1.25rem;
@@ -222,12 +225,12 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 .scope-header {
     font-size: 0.92rem;
     font-weight: 700;
-    color: #172033;
+    color: var(--text-primary);
     margin-bottom: 0.75rem;
     display: flex;
     align-items: center;
     gap: 0.45rem;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid var(--border);
     padding-bottom: 0.5rem;
 }
 
@@ -236,21 +239,21 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
     align-items: center;
     gap: 0.5rem;
     font-size: 0.82rem;
-    color: #334155;
+    color: var(--text-secondary);
     margin-bottom: 0.45rem;
     line-height: 1.3;
 }
 
 .scope-check {
-    color: #047857;
+    color: var(--brand);
     font-size: 0.95rem;
     font-weight: 800;
 }
 
 /* 4 MODEL OVERVIEW METRIC CARDS */
 .model-card {
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.15rem 1.25rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -266,19 +269,19 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 }
 
 .card-green {
-    border-top: 4px solid #047857;
+    border-top: 4px solid var(--brand);
 }
 
 .card-blue {
-    border-top: 4px solid #0369A1;
+    border-top: 4px solid var(--blue);
 }
 
 .card-teal {
-    border-top: 4px solid #0D9488;
+    border-top: 4px solid var(--teal);
 }
 
 .card-purple {
-    border-top: 4px solid #7C3AED;
+    border-top: 4px solid var(--purple);
 }
 
 .card-header-row {
@@ -298,10 +301,10 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
     font-size: 1.2rem;
 }
 
-.bubble-green { background: #D1FAE5; color: #065F46; }
-.bubble-blue { background: #E0F2FE; color: #0369A1; }
-.bubble-teal { background: #CCFBF1; color: #0D9488; }
-.bubble-purple { background: #F3E8FF; color: #6D28D9; }
+.bubble-green { background: var(--success-surface); color: var(--brand-strong); }
+.bubble-blue { background: var(--blue-surface); color: var(--blue); }
+.bubble-teal { background: var(--teal-surface); color: var(--teal); }
+.bubble-purple { background: var(--purple-surface); color: var(--purple-deep); }
 
 .card-badge-pill {
     font-size: 0.72rem;
@@ -312,22 +315,22 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
     letter-spacing: 0.04em;
 }
 
-.pill-green { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
-.pill-blue { background: #E0F2FE; color: #0369A1; border: 1px solid #BAE6FD; }
-.pill-teal { background: #CCFBF1; color: #0D9488; border: 1px solid #99F6E4; }
-.pill-purple { background: #F3E8FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+.pill-green { background: var(--success-surface); color: var(--brand-strong); border: 1px solid var(--success-border); }
+.pill-blue { background: var(--blue-surface); color: var(--blue); border: 1px solid var(--border); }
+.pill-teal { background: var(--teal-surface); color: var(--teal); border: 1px solid var(--border); }
+.pill-purple { background: var(--purple-surface); color: var(--purple-deep); border: 1px solid var(--border); }
 
 .card-model-name {
     font-size: 0.88rem;
     font-weight: 700;
-    color: #172033;
+    color: var(--text-primary);
     margin-bottom: 0.25rem;
 }
 
 .card-metric-value {
     font-size: 1.8rem;
     font-weight: 800;
-    color: #172033;
+    color: var(--text-primary);
     letter-spacing: -0.02em;
     margin-bottom: 0.25rem;
     line-height: 1.15;
@@ -335,7 +338,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 
 .card-metric-sub {
     font-size: 0.82rem;
-    color: #475569;
+    color: var(--text-secondary);
     font-weight: 500;
 }
 
@@ -348,8 +351,8 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 
 /* CHART & CONTAINER CARDS */
 .chart-card {
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.25rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -359,7 +362,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 .chart-card-header {
     font-size: 1.15rem;
     font-weight: 700;
-    color: #172033;
+    color: var(--text-primary);
     margin-bottom: 0.25rem;
     display: flex;
     align-items: center;
@@ -368,7 +371,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 
 .chart-card-sub {
     font-size: 0.82rem;
-    color: #475569;
+    color: var(--text-secondary);
     margin-bottom: 0.85rem;
 }
 
@@ -376,7 +379,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 .quick-action-card {
     border-radius: 12px;
     padding: 1.15rem 1.35rem;
-    color: #FFFFFF;
+    color: var(--text-on-brand);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -391,15 +394,15 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 }
 
 .qa-teal {
-    background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
+    background: linear-gradient(135deg, var(--teal-action) 0%, var(--teal-action) 100%);
 }
 
 .qa-blue {
-    background: linear-gradient(135deg, #0369A1 0%, #075985 100%);
+    background: linear-gradient(135deg, var(--blue) 0%, var(--blue-deep) 100%);
 }
 
 .qa-purple {
-    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+    background: linear-gradient(135deg, var(--purple) 0%, var(--purple-deep) 100%);
 }
 
 .qa-content {
@@ -422,28 +425,28 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 .qa-text-title {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #FFFFFF;
+    color: var(--text-on-brand);
     margin: 0;
 }
 
 .qa-text-sub {
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.90);
+    color: var(--text-on-brand);
     margin: 0;
     font-weight: 400;
 }
 
 .qa-arrow {
     font-size: 1.3rem;
-    color: #FFFFFF;
+    color: var(--text-on-brand);
     opacity: 0.95;
 }
 
 /* CONTROL CONTEXT PANELS (SLIDER GUIDES) */
 .control-context-card {
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
-    border-left: 4px solid #047857;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--brand);
     border-radius: 10px;
     padding: 0.95rem 1.15rem;
     margin-bottom: 0.65rem;
@@ -453,7 +456,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 .control-context-title {
     font-size: 0.95rem;
     font-weight: 700;
-    color: #172033;
+    color: var(--text-primary);
     margin-bottom: 0.25rem;
     display: flex;
     align-items: center;
@@ -462,7 +465,7 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 
 .control-context-desc {
     font-size: 0.83rem;
-    color: #475569;
+    color: var(--text-secondary);
     line-height: 1.4;
     margin-bottom: 0.45rem;
 }
@@ -475,29 +478,29 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 }
 
 .control-badge {
-    background: #F1F5F9;
-    color: #334155;
+    background: var(--surface-muted);
+    color: var(--text-secondary);
     padding: 0.2rem 0.55rem;
     border-radius: 6px;
     font-weight: 600;
-    border: 1px solid #E2E8F0;
+    border: 1px solid var(--border);
 }
 
 .control-badge-active {
-    background: #D1FAE5;
-    color: #065F46;
+    background: var(--success-surface);
+    color: var(--brand-strong);
     padding: 0.2rem 0.55rem;
     border-radius: 6px;
     font-weight: 700;
-    border: 1px solid #A7F3D0;
+    border: 1px solid var(--success-border);
 }
 
 /* STYLED HIGH-CONTRAST TABLES */
 .styled-table {
     width: 100%;
     border-collapse: collapse;
-    background: #FFFFFF;
-    border: 1px solid #CBD5E1;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 8px;
     overflow: hidden;
     margin: 1rem 0;
@@ -505,13 +508,13 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 }
 
 .styled-table th {
-    background-color: #F1F5F9;
-    color: #172033;
+    background-color: var(--surface-muted);
+    color: var(--text-primary);
     font-weight: 700;
     padding: 9px 12px;
     text-align: left;
-    border-bottom: 2px solid #CBD5E1;
-    border-right: 1px solid #E2E8F0;
+    border-bottom: 2px solid var(--border);
+    border-right: 1px solid var(--border);
 }
 
 .styled-table th:last-child {
@@ -520,9 +523,9 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 
 .styled-table td {
     padding: 9px 12px;
-    color: #172033;
-    border-bottom: 1px solid #E2E8F0;
-    border-right: 1px solid #E2E8F0;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
     vertical-align: middle;
 }
 
@@ -535,44 +538,44 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 }
 
 .styled-table tr:hover td {
-    background-color: #F8FAFC;
+    background-color: var(--canvas);
 }
 
 /* SCIENTIFIC DISCLAIMER BOXES */
 .callout-amber {
-    background-color: #FFFBEB;
-    border: 1px solid #F59E0B;
-    border-left: 5px solid #F59E0B;
+    background-color: var(--warning-surface);
+    border: 1px solid var(--warning-accent);
+    border-left: 5px solid var(--warning-accent);
     padding: 1rem 1.25rem;
     border-radius: 10px;
     margin: 1.25rem 0;
     font-size: 0.92rem;
-    color: #92400E;
+    color: var(--warning-text);
     box-shadow: 0 1px 2px rgba(245, 158, 11, 0.05);
     line-height: 1.45;
 }
 
 .callout-info {
-    background-color: #F0F9FF;
-    border: 1px solid #0369A1;
-    border-left: 5px solid #0369A1;
+    background-color: var(--info-surface);
+    border: 1px solid var(--blue);
+    border-left: 5px solid var(--blue);
     padding: 1rem 1.25rem;
     border-radius: 10px;
     margin: 1.25rem 0;
     font-size: 0.92rem;
-    color: #075985;
+    color: var(--blue-deep);
     line-height: 1.45;
 }
 
 .callout-provenance {
-    background-color: #F0FDF4;
-    border: 1px solid #047857;
-    border-left: 5px solid #047857;
+    background-color: var(--success-soft-surface);
+    border: 1px solid var(--brand);
+    border-left: 5px solid var(--brand);
     padding: 0.95rem 1.25rem;
     border-radius: 10px;
     margin: 1rem 0;
     font-size: 0.90rem;
-    color: #065F46;
+    color: var(--brand-strong);
     line-height: 1.45;
 }
 
@@ -587,84 +590,99 @@ section[data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checke
 }
 
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #047857 0%, #065F46 100%) !important;
-    color: #FFFFFF !important;
-    border: 1px solid #047857 !important;
+    background: linear-gradient(135deg, var(--brand) 0%, var(--brand-strong) 100%) !important;
+    color: var(--text-on-brand) !important;
+    border: 1px solid var(--brand) !important;
     box-shadow: 0 2px 4px rgba(4, 120, 87, 0.25) !important;
 }
 
 .stButton > button[kind="primary"]:hover {
-    background: linear-gradient(135deg, #065F46 0%, #064E3B 100%) !important;
+    background: linear-gradient(135deg, var(--brand-strong) 0%, var(--brand-deep) 100%) !important;
     box-shadow: 0 4px 10px rgba(4, 120, 87, 0.35) !important;
     transform: translateY(-1px) !important;
 }
 
 .stButton > button[kind="secondary"], .stButton > button:not([kind="primary"]) {
-    background-color: #FFFFFF !important;
-    color: #172033 !important;
-    border: 1px solid #CBD5E1 !important;
+    background-color: var(--text-on-brand) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
 .stButton > button[kind="secondary"]:hover, .stButton > button:not([kind="primary"]):hover {
-    background-color: #F8FAFC !important;
-    border-color: #64748B !important;
-    color: #172033 !important;
+    background-color: var(--canvas) !important;
+    border-color: var(--text-muted) !important;
+    color: var(--text-primary) !important;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
     transform: translateY(-1px) !important;
 }
 
 /* Streamlit Slider High Contrast */
 div[data-testid="stSlider"] label {
-    color: #172033 !important;
+    color: var(--text-primary) !important;
     font-weight: 700 !important;
     font-size: 0.92rem !important;
 }
 
 div[data-testid="stSlider"] div[data-testid="stSliderThumbValue"] {
-    color: #047857 !important;
+    color: var(--brand) !important;
     font-weight: 800 !important;
     font-size: 0.88rem !important;
 }
 
 div[data-testid="stSlider"] div[data-testid="stSliderTickBarMin"],
 div[data-testid="stSlider"] div[data-testid="stSliderTickBarMax"] {
-    color: #475569 !important;
+    color: var(--text-secondary) !important;
     font-weight: 600 !important;
     font-size: 0.80rem !important;
 }
 
 /* Streamlit Expander Styling */
 div[data-testid="stExpander"] {
-    background: #FFFFFF !important;
-    border: 1px solid #CBD5E1 !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
     border-radius: 10px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
 }
 
 div[data-testid="stExpander"] details summary span {
-    color: #172033 !important;
+    color: var(--text-primary) !important;
     font-weight: 700 !important;
 }
 
 /* Streamlit Tabs Styling */
 div[data-baseweb="tab-list"] {
     gap: 0.5rem;
-    border-bottom: 1px solid #CBD5E1 !important;
+    border-bottom: 1px solid var(--border) !important;
 }
 
 div[data-baseweb="tab"] {
-    color: #475569 !important;
+    color: var(--text-secondary) !important;
     font-weight: 600 !important;
     padding: 0.5rem 1rem !important;
 }
 
 div[data-baseweb="tab"][aria-selected="true"] {
-    color: #047857 !important;
+    color: var(--brand) !important;
     font-weight: 700 !important;
-    border-bottom: 3px solid #047857 !important;
+    border-bottom: 3px solid var(--brand) !important;
+}
+
+/* Keyboard focus and disabled controls remain perceivable without relying on color alone. */
+.stApp :is(button, a[href], input, textarea, select, [role="slider"], [role="radio"], [role="checkbox"]):focus-visible {
+    outline: 3px solid var(--focus) !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+}
+.stButton > button:disabled {
+    background: var(--surface-muted) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border) !important;
+    opacity: 1 !important;
+    cursor: not-allowed !important;
 }
 </style>"""
+    css_content = css_content.replace("__THEME_VARIABLES__", css_variables(get_active_theme_mode()))
     st.markdown(css_content, unsafe_allow_html=True)
 
 
@@ -751,11 +769,11 @@ def render_model_card(
     card_class = f"card-{color_theme}"
 
     stroke_color = {
-        "green": "#047857",
-        "blue": "#0369A1",
-        "teal": "#0D9488",
-        "purple": "#7C3AED",
-    }.get(color_theme, "#047857")
+        "green": "var(--brand)",
+        "blue": "var(--blue)",
+        "teal": "var(--teal)",
+        "purple": "var(--purple)",
+    }.get(color_theme, "var(--brand)")
 
     fill_color = {
         "green": "rgba(4, 120, 87, 0.12)",
@@ -826,7 +844,7 @@ def render_control_context_card(
     unit_badge = f'<span class="control-badge"><b>Unit:</b> {unit}</span>' if unit else ""
     range_badge = f'<span class="control-badge"><b>Permitted Range:</b> [{min_val} – {max_val}]</span>' if min_val is not None and max_val is not None else ""
     active_badge = f'<span class="control-badge-active"><b>Selected:</b> {current_val}</span>' if current_val is not None else ""
-    impact_html = f'<div style="font-size: 0.80rem; color: #334155; margin-top: 0.35rem;"><b>💡 Downstream Effect:</b> {impact}</div>' if impact else ""
+    impact_html = f'<div style="font-size: 0.80rem; color: var(--text-secondary); margin-top: 0.35rem;"><b>💡 Downstream Effect:</b> {impact}</div>' if impact else ""
 
     html_code = (
         f'<div class="control-context-card">'
@@ -869,7 +887,7 @@ def render_provenance_badge(
         f'<div class="callout-provenance">'
         f'<strong>📍 Dataset Provenance & Physical Units</strong><br>'
         f'• <b>Source</b>: {dataset_name} &nbsp;|&nbsp; '
-        f'• <b>Category</b>: <span style="background:#D1FAE5; color:#065F46; font-weight:700; padding:2px 8px; border-radius:9999px; font-size:0.78rem; border:1px solid #A7F3D0;">{provenance_type}</span><br>'
+        f'• <b>Category</b>: <span style="background:var(--success-surface); color:var(--brand-strong); font-weight:700; padding:2px 8px; border-radius:9999px; font-size:0.78rem; border:1px solid var(--success-border);">{provenance_type}</span><br>'
         f'• <b>Location</b>: {location} &nbsp;|&nbsp; '
         f'• <b>Period</b>: {year_period} &nbsp;|&nbsp; '
         f'• <b>Physical Unit</b>: <code>{target_units}</code>'

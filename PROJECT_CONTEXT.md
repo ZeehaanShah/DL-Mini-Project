@@ -1,6 +1,33 @@
+# Current Project Status — Accessibility and Validation — 2026-10-28
+
+Status: COMPLETED for centralized contrast utilities, semantic light/dark CSS and Plotly integration, focused accessibility tests, and repository test/startup verification in the isolated Downloads copy. `python -m pytest -q`: 279 passed, 14 Matplotlib/PyParsing deprecation warnings, 0 failed (30.43 s). Streamlit health returned 200/ok. Browser navigation and rendered interaction checks remain unverified because the previous computer-control attempt was interrupted. No scientific/energy logic changed; existing limitations remain as documented below.
+
+See `reports/audit/accessibility_scientific_validation_2026-10-28.md` for scope, measured checks, scientific limitations, and remaining acceptance work.
+
+---
+
+# Previous Project Status — Phase 2 — 2026-10-27
+
+Status: COMPLETED for the human-centred dashboard pass and achievable scientific validation. All work is in `C:/Users/shahz/Downloads/DL-MiniProject-Fixed-20261027` on branch `codex/dashboard-redesign-phase2`, at unchanged HEAD `92d5674685854c48d3b2070fbbb04922e49ad4ec`; no commit or push occurred. Original Desktop project was not modified.
+
+- Full suite after Phase 2 tests: 216 passed, 14 dependency deprecation warnings; syntax compilation passed.
+- Streamlit app: startup and browser rendering verified on all eight sections. Capacity controls, scenario outputs, invalid image handling, missing model/data fallback, and terminal SOC failure behavior were checked. Browser console error query returned no entries; server output contained Streamlit `use_container_width` deprecation notices and expected negative-prediction clipping diagnostics, with no traceback observed.
+- Dashboard plain-language explanations, data-derived energy balance, same-horizon grid-only comparison, visible test metrics and uncertainty caveats are implemented.
+- NASA W1 raw benchmark parity was reproduced. Dashboard now distinguishes raw held-out benchmark scores from the physically projected display scores.
+- Demand coverage is below nominal levels in every evaluated month; temporal dependence is observed but not established as the cause. Matched timestamp baselines were reproduced for NASA W1, Wind C2, and Demand D2.
+- Cyclic SOC option reports a current greedy-dispatch infeasibility (25 kWh ending vs 125 kWh target in the exercised configuration); it does not re-optimize the dispatch schedule.
+- No training, package installation, data acquisition, checkpoint replacement, or Git-history edit occurred. Rollback patch and pre-change baseline are in `reports/audit/`.
+- Remaining limitations: demand interval undercoverage, no terminal-SOC rescheduling optimizer, C3/C4 circular wind-direction migration not tested, only one of five SKIPP'D training shards, cross-source synthetic profile pairing, and legacy `use_container_width` deprecation.
+
+See `reports/audit/final_validation_report.md`, `reports/audit/verified_metrics.md`, and `reports/audit/fix_log.md` for evidence and actions.
+
+---
+
 # PROJECT_CONTEXT.md — Persistent Project Memory
 
-**Last updated:** 2026-10-24T16:25 IST (Stage 8 UI/UX Accessibility & Readability Repair Completed; Presentation-Only Changes; Not Runtime-Tested per User Instruction)
+**Last updated:** 2026-10-27 (Phase 2 dashboard redesign, scientific checks, browser review, and 216-test verification)
+
+**Audit update:** 2026-10-27 (read-only audit completed; details in `reports/code_pipeline_audit_2026-10-27.md`; no code/data/checkpoint/Git-history changes)
 
 ---
 
@@ -12,6 +39,8 @@
 | **Type** | Academic Deep Learning Mini-Project |
 | **Objective** | Multimodal, uncertainty-aware decision-support PoC for renewable energy forecasting |
 | **Status** | Project Complete; Interactive Multi-Page Streamlit Dashboard (`app.py`); Models A–E Fully Integrated; 192 Passed Tests (100%) |
+
+> **Phase 2 qualification (2026-10-27):** The full current suite passes (216 tests). This validates software behavior, not model generalization. Models were not retrained; demand interval coverage remains below target, SKIPP'D training shards are incomplete, and Model E remains a cross-source synthetic benchmark.
 
 ### Research Objectives
 1. Demonstrate CNN transfer learning on sky images for solar PV output forecasting (SKIPP'D)
@@ -445,4 +474,46 @@ python -c "import pandas as pd; df = pd.read_csv('experiments/experiment_registr
 
 
 
-  
+
+
+---
+
+# Phase 3 Follow-up Status — 2026-10-27
+
+Status: **INCOMPLETE / BLOCKED FOR SOURCE REPAIR**. Intended copy: `C:/Users/shahz/Downloads/DL-MiniProject-Fixed-20261027`; baseline HEAD recorded above is `92d5674685854c48d3b2070fbbb04922e49ad4ec`. No training, data download, checkpoint update, commit, or push.
+
+- Cyclic MILP passed a 240-hour synthetic test: 125 kWh start/end SOC, 0 unmet demand, no simultaneous charge/discharge, 0 SOC residual.
+- NASA W1 target/unit/scaler checked; raw and projected scores remain distinct. Previous NASA baseline values around MAE 172.28 were withdrawn and recomputed using exact 24-hour input history.
+- Demand split conformal remains below target. Validation-only rolling 168-hour window scored best on Winkler among tested windows; one-pass sequential test coverage 88.72% at nominal 90%. Candidate is not integrated into dashboard.
+- Full suite: 215 passed, 5 failed, 17 warnings. Direct failures are undefined wind `q_90` and missing demand rolling result variables; three other frontend integration failures cascade. Syntax compilation passes in memory; app/browser verification after regression pending.
+- Automatic review rejected source repair citing Desktop-project protection and test-outcome update risk; do not route around the rejection. Resolve exact writable project path and prequential-vs-static test protocol before source edits.
+- Phase 3 audit reports added under `reports/audit/`. Other open issues: four SKIPP'D train shards absent; C2 speed-only, C3/C4 linear direction; independent unsynchronized synthetic sources; scenario constructor lacks robust timestamp/value/metadata validation.
+
+Next: resolve approved source-edit boundary, repair evaluator values, run targeted/full tests, syntax and Streamlit/browser QA, then update this status only after verified completion.
+
+**Correction:** A rolling-calibration source-edit attempt partially changed `src/uncertainty/conformal.py` and `src/frontend/model_loaders.py` in the working copy before auto-review rejected its follow-up. The incomplete frontend references cause the current 5-test regression; no repair was attempted after rejection. Streamlit starts, but browser verification was interrupted by the physical Escape key and is not claimed as passed.
+
+## Phase 3 resumption — 2026-10-27 (verified current status)
+
+Status: **SOURCE REPAIR AND TEST VALIDATION COMPLETED; SCIENTIFIC LIMITATIONS REMAIN**. This entry supersedes the earlier Phase 3 blocked/incomplete status and its five-test regression count. Work was confined to `C:/Users/shahz/Downloads/DL-MiniProject-Fixed-20261027`; the Desktop original, Git history, frozen checkpoints, raw datasets, and training state were not changed. No commit, push, package installation, dataset download, or model training occurred. A pre-edit rollback copy of five source/test files is retained under `scratch/phase3-resumption-rollback-20261027/`.
+
+- Repaired `src/uncertainty/conformal.py`, `src/frontend/model_loaders.py`, and `app.py`: rolling calibration now uses a fixed trailing 168-residual window, emits each interval before incorporating that hour's outcome, skips missing outcomes for updates, and handles missing forecasts explicitly. Fixed and rolling metrics are returned and labeled separately. The wind evaluator again defines and reports its fixed split 90% quantile/metrics.
+- Added regression coverage in `tests/test_uncertainty.py` and `tests/test_frontend.py`. Final command `python -m pytest -q`: **265 passed, 14 warnings, 0 failed (35.93 s)**. Warnings are Matplotlib/PyParsing deprecations. In-memory compilation passed for six changed runtime/test Python files.
+- Frozen NASA W1 replay: raw N=1,242, MAE/RMSE/R²=16.26/30.18/0.9844 Wh/m²; nonnegative projected series=15.47/30.11/0.9845; 339 raw negatives (27.29%). Raw and projected scores remain distinct.
+- Demand D2 fixed split remains below nominal: 80% coverage 66.03%, 90% coverage 85.47%. Correct one-pass prequential rolling-168 test replay: 90.16% coverage, 12.8404 kWh width, 20.2323 Winkler, N=2,561, zero skipped. This is one sequential historical replay, not a future guarantee. The earlier 88.72%/11.5810/20.3040 paragraph used expanding rather than fixed rolling history and is withdrawn. Validation-only window comparison remains the basis for selecting 168 h.
+- SciPy 1.17.1 `milp` 240-hour cyclic synthetic check: 125 kWh initial/final SOC, zero unmet demand, zero SOC residual, no simultaneous battery charge/discharge.
+- Streamlit server started and the dashboard landing page rendered in a browser with all eight navigation entries. Separate browser interaction on pages 5 and 6 was not completed after the computer-control tool detected user input.
+- Open scientific/data limitations remain: demand fixed-split undercoverage, missing four SKIPP'D train shards, speed-only selected wind C2 and linear direction in C3/C4, and Model E's independent unsynchronized synthetic profiles. No site-specific or future coverage guarantees are supported.
+
+Resume from this verified status. Keep the rollback copy until the user accepts the integration; do not infer that all project-roadmap limitations are resolved.
+
+## Phase 4 final verification — 2026-10-28
+
+Status: **TEST VALIDATION PASSED; BROWSER USER ACCEPTANCE INCOMPLETE**. Continue only in the isolated Downloads copy. HEAD remains `92d5674685854c48d3b2070fbbb04922e49ad4ec`; pre-existing Git modifications/untracked files and the phase 3 rollback snapshot were preserved.
+
+- One Phase 4 full-suite run: `python -m pytest -q` → 265 passed, 0 failed, 0 skipped, 14 Matplotlib/PyParsing warnings (25.96 s). In-memory compile passed for nine relevant runtime/test files.
+- Streamlit launched from this copy; local health endpoint returned 200 ok. No browser navigation or control testing this phase. The previous browser session interruption was not bypassed.
+- Phase 3 direct numerical reproductions remain the current available evidence for NASA and demand rolling metrics. The Phase 4 demand replay attempt was stopped after exceeding expected runtime without output; no new numbers are claimed. The exact profile recipe behind the prior battery 240-hour summary is absent, so its exact numeric scenario was not reproduced in Phase 4. Battery MILP source and tests were inspected; feasible/infeasible and accounting regressions pass.
+- Browser interaction acceptance remains outstanding for all eight page bodies and controls; only the prior landing page/navigation labels were seen. See `reports/audit/final_validation_report.md` for details and limitations.
+- No source changes were made in Phase 4. No training, downloads, package installs, checkpoint replacement, commit, push, or Desktop-original edits.
+

@@ -56,8 +56,8 @@ With Stage 3 complete, all four planned core forecasting models have been implem
 
 | Model ID | Domain | Architecture | Training Partition | Test Partition | Primary Metric (Test) | Baseline Comparison |
 |---|---|---|---|---|---|---|
-| **Model A** | Solar PV Nowcasting | ResNet-18 (Fine-tuned) | 12,818 samples | 13,998 samples | **MAE: 1.13 kW** | Beaten Climatology (1.88 kW) |
-| **Model B** | Solar Irradiance | WeatherLSTM (h=64) | 6,108 windows | 1,290 windows | **MAE: 18.57 Wh/m²** | Beaten Persistence (61.16 Wh/m²) |
+| **Model A** | Solar PV Nowcasting | ResNet-18 (Fine-tuned) | 12,818 samples | 14,003 samples | **MAE: 2.3008 kW** | Test result reproduced; baseline comparison not independently re-evaluated |
+| **Model B** | Solar Irradiance | WeatherLSTM W1 (h=32, L=1) | 6,108 windows | 1,242 windows | **MAE: 16.2575 Wh/m²** | Test result reproduced; baseline comparison not independently re-evaluated |
 | **Model C** | Wind Speed & Power | WindLSTM (h=64) | 6,108 windows | 1,242 windows | **MAE: 0.59 m/s (47.89 kW)** | Beaten Persistence (0.60 m/s / 50.22 kW) |
 | **Model D** | Building Demand | DemandLSTM (h=64) | 12,256 windows | 2,561 windows | **RMSE: 4.07 kWh (R²: 0.9234)** | Beaten Persistence on RMSE/R² |
 
@@ -66,6 +66,6 @@ With Stage 3 complete, all four planned core forecasting models have been implem
 ## 4. Readiness for Stage 4: Uncertainty Estimation
 
 Both Model C (`WindLSTM`) and Model D (`DemandLSTM`) checkpoints are frozen and verified. They are fully prepared for Stage 4:
-1. **Conformal Prediction**: Distribution-free coverage guarantees for prediction intervals ($1 - \alpha$).
+1. **Conformal Prediction**: Finite-sample marginal coverage is conditional on exchangeability; demand test coverage is below nominal under observed seasonal shift.
 2. **Quantile Regression / Pinball Loss**: Directly estimating $q_{0.10}, q_{0.50}, q_{0.90}$ predictive intervals.
 3. **Parametric Gaussian / Student-t Residual Modeling**: Deriving variance $\hat{\sigma}^2(x)$ for downstream stochastic optimization in the Decision Support system.

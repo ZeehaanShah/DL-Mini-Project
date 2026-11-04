@@ -21,7 +21,7 @@ Stage 5 completes the final component of the project framework: **Model E (Uncer
 | **3. Separation of Multi-Location Datasets** | Distinct geographical origins (Stanford nowcasting, Mumbai solar irradiance, Gujarat wind speed, Orlando electricity demand) are preserved and explicitly distinguished. Datasets were **never merged into a single empirical time series**. | VERIFIED |
 | **4. Physical Conversion Distinction** | Irradiance in $\text{Wh/m}^2$ is converted to electrical energy via a documented Standard Test Condition (STC) derate model. Wind power is converted via a generic 2 MW turbine power curve and explicitly designated as an **illustrative engineering proxy**, not measured generation. | VERIFIED |
 | **5. Physical Energy Conservation** | Energy conservation holds strictly at every time step ($|\text{residual}| \le 10^{-6}\text{ kWh}$) across solar, wind, battery, grid, served demand, curtailment, and unmet demand. | VERIFIED |
-| **6. Deterministic Optimization** | Discrete candidate grid evaluation ($6 \times 5 \times 4 = 120$ combinations) guarantees the exact global optimum over the search space with 100% reproducible bitwise output. | VERIFIED |
+| **6. Deterministic Optimization** | Discrete candidate grid evaluation ($6 \times 5 \times 4 = 120$ combinations) guarantees the exact global optimum over the search space with deterministic evaluation of every configured candidate. | VERIFIED |
 | **7. Conformal Uncertainty Sensitivity** | Evaluated under Conservative Stress ($R_{\text{low}}, D_{\text{upp}}$), Central ($R_{\text{cent}}, D_{\text{cent}}$), and Favorable ($R_{\text{upp}}, D_{\text{low}}$) scenarios using calibrated 90% conformal quantiles ($q_{\text{wind}}=1.5316\text{ m/s}$, $q_{\text{demand}}=4.7627\text{ kWh}$). | VERIFIED |
 | **8. Marginal vs Joint Uncertainty Caveat** | Explicitly declared that separate 90% marginal conformal intervals do not guarantee 90% simultaneous joint coverage without Bonferroni or copula adjustments. | VERIFIED |
 | **9. Test Set Leakage Prevention** | Conformal calibration parameters ($q_{80}, q_{90}$) were computed strictly on dedicated calibration partitions. Test residuals were never used to tune optimizer parameters or scenario selection. | VERIFIED |
@@ -114,26 +114,26 @@ Parameters (illustrative benchmark proxies):
 - $c_{\text{solar}} = \$800/\text{kW}$, $c_{\text{wind}} = \$1200/\text{kW}$, $c_{\text{batt}} = \$250/\text{kWh}$
 - $c_{\text{grid}} = \$0.12/\text{kWh}$, $c_{\text{unmet}} = \$2.00/\text{kWh}$ (Value of Lost Load), $c_{\text{curtail}} = \$0.01/\text{kWh}$
 
-### 4.3 Optimization Results & Baseline Comparison
+Battery carry-in discharge is valued at the configured grid-energy rate in the objective. Initial/final SOC and terminal SOC delta are reported; the current horizon does not enforce cyclic terminal SOC, so results remain short-slice comparisons rather than a repeatable daily dispatch guarantee.\n\n### 4.3 Optimization Results & Baseline Comparison
 
 The candidate configurations were evaluated over a 240-hour (10-day) representative test slice ($N=240$, Total Demand = $11,788.58\text{ kWh}$, Peak Demand = $90.34\text{ kW}$, Grid Import Limit = $100.0\text{ kW}$).
 
 | Configuration | Solar ($C_{\text{pv}}$) | Wind ($C_{\text{wind}}$) | Battery ($C_{\text{bess}}$) | Renewable Penetration | Grid Import | Grid Reduction | Total Cost | Unmet Demand | Loss of Load |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **100% Grid Baseline** | 0.0 kW | 0.0 kW | 0.0 kWh | **0.00%** | 11,788.58 kWh | 0.0% | $1,414.63 | 0.00 kWh | 0.0% (0 h) |
-| **Cost-Optimal Mix** | 150.0 kW | 0.0 kW | 200.0 kWh | **38.32%** | 7,271.02 kWh | **-38.32%** | **$1,110.10** | 0.00 kWh | 0.0% (0 h) |
-| **Autonomy-Optimal Mix** | 150.0 kW | 300.0 kW | 200.0 kWh | **57.11%** | 5,056.18 kWh | **-57.11%** | $1,379.30 | 0.00 kWh | 0.0% (0 h) |
+| **Cost-Optimal Mix** | 150.0 kW | 0.0 kW | 200.0 kWh | **37.54%** | 7,271.02 kWh | **38.32%** | **$1,121.14** | 0.00 kWh | 0.0% (0 h) |
+| **Autonomy-Optimal Mix** | 150.0 kW | 300.0 kW | 200.0 kWh | **56.33%** | 5,056.18 kWh | **57.11%** | $1,390.33 | 0.00 kWh | 0.0% (0 h) |
 
 #### Key Insights:
-1. **Economic Viability**: The Cost-Optimal Mix achieves **38.32% clean energy penetration** while reducing total energy expenditure from $1,414.63 to $1,110.10—a net savings of **$304.53 (21.5% cost reduction)** over the 10-day evaluation slice.
-2. **Autonomy Frontier**: The Autonomy-Optimal configuration achieves **57.11% renewable penetration** and cuts grid import by **6,732.40 kWh (57.11%)**, while remaining cheaper than the pure grid baseline ($1,379.30 vs $1,414.63).
+1. **Economic Viability**: The Cost-Optimal Mix achieves **37.54% renewable penetration** while reducing total modeled cost from $1,414.63 to $1,121.14—a modeled difference of **$293.49 (20.7% cost reduction)** over the 10-day evaluation slice.
+2. **Autonomy Frontier**: The Autonomy-Optimal configuration achieves **56.33% renewable penetration** and cuts grid import by **6,732.40 kWh (57.11%)**, while remaining below the grid-only modeled cost ($1,390.33 vs $1,414.63).
 3. **Storage Role**: Solar generation without storage leaves evening peaks unserved. The 200 kWh battery absorbs mid-day solar surplus and discharges 692.07 kWh during high-demand nighttime hours.
 
 ---
 
 ## 5. Conformal Uncertainty Feasibility Analysis
 
-To evaluate resilience under real-world forecasting errors and distribution shift, the Cost-Optimal Mix was subjected to a rigorous 3-scenario conformal uncertainty stress test using 90% calibrated intervals:
+To evaluate sensitivity to forecast bounds, the Cost-Optimal Mix was simulated under three deterministic scenarios derived from 90% marginal conformal quantiles. Because demand is undercovered on the held-out test and the profiles are synthetic, these are not calibrated probability guarantees:
 - **Conservative Stress Scenario**: Worst-case combination of upper-bound electricity demand ($D_{\text{upp}} = \hat{D} + q_D$) and lower-bound renewable resources ($v_{\text{low}} = \max(0, \hat{v} - q_W)$).
 - **Central Expected Scenario**: Point predictions ($\hat{D}, \hat{v}, \hat{G}$).
 - **Favorable Optimistic Scenario**: Lower-bound electricity demand ($D_{\text{low}} = \max(0, \hat{D} - q_D)$) and upper-bound renewable resources.
@@ -142,19 +142,19 @@ To evaluate resilience under real-world forecasting errors and distribution shif
 
 | Scenario | Total Demand | Available Renewable | Grid Import | Curtailment | Unmet Demand | Renewable Penetration | Loss of Load |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Conservative (Stress)** | 12,931.63 kWh | 4,299.89 kWh | 8,765.21 kWh | 92.12 kWh | **0.00 kWh** | **32.22%** | **0.0% (0 h)** |
-| **Central (Expected)** | 11,788.58 kWh | 5,058.70 kWh | 7,271.02 kWh | 470.15 kWh | **0.00 kWh** | **38.32%** | **0.0% (0 h)** |
-| **Favorable (Optimistic)** | 10,645.53 kWh | 5,817.50 kWh | 5,917.20 kWh | 978.49 kWh | **0.00 kWh** | **44.42%** | **0.0% (0 h)** |
+| **Conservative (Stress)** | 12,931.63 kWh | 4,299.89 kWh | 8,765.21 kWh | 92.12 kWh | **0.00 kWh** | **31.51%** | **0.0% (0 h)** |
+| **Central (Expected)** | 11,788.58 kWh | 5,058.70 kWh | 7,271.02 kWh | 470.15 kWh | **0.00 kWh** | **37.54%** | **0.0% (0 h) |
+| **Favorable (Optimistic)** | 10,645.53 kWh | 5,817.50 kWh | 5,917.20 kWh | 978.49 kWh | **0.00 kWh** | **43.55%** | **0.0% (0 h)** |
 
 ### Critical Scientific Findings:
 1. **Zero Unmet Demand Resilience**: Even under conservative joint stress where demand surges by +9.7% and available renewable generation declines by -15.0%, unmet demand remains **0.00 kWh** across all 240 hours because the 100 kW grid interconnection smoothly compensates for renewable deficits.
-2. **Penetration Sensitivity Band**: Renewable penetration spans a stable corridor from **32.22%** (Stress) to **38.32%** (Expected) to **44.42%** (Optimistic).
+2. **Penetration Sensitivity Band**: Renewable penetration spans a stable corridor from **31.51%** (Stress) to **37.54%** (Expected) to **43.55%** (Optimistic).
 3. **Curtailment Dynamics**: Under favorable solar generation, curtailment increases to 978.49 kWh, highlighting that additional storage capacity would be required to capture peak surplus.
 
 ### Statistical Disclosure on Joint Coverage
 - The conformal quantiles ($q_W = 1.5316\text{ m/s}$, $q_D = 4.7627\text{ kWh}$) provide $90\%$ **marginal** coverage on their respective calibration distributions.
 - **Do not interpret the stress scenario as a calibrated 90% joint confidence region**: By Bonferroni's inequality, separate marginal $1 - \alpha$ intervals guarantee joint coverage of at least $1 - 2\alpha = 80\%$, not $90\%$.
-- Furthermore, as established in Stage 4, seasonal distribution shift in Florida building demand led to empirical test undercoverage ($82.16\%$ vs nominal $90\%$). The stress scenario deliberately tests the physical system against these distribution excursions.
+- Furthermore, as established in Stage 4, seasonal distribution shift in Florida building demand led to empirical test undercoverage ($85.47\%$ vs nominal $90\%$). The stress scenario deliberately tests the physical system against these distribution excursions.
 
 ---
 
