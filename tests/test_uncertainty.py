@@ -17,6 +17,7 @@ from src.uncertainty.conformal import (
     SplitConformalCalibrator,
     calculate_interval_metrics,
     evaluate_conformal_intervals,
+    predict_rolling_conformal_intervals,
 )
 
 
@@ -228,3 +229,51 @@ class TestPhysicalClippingAndIntervalMetrics:
         m_miss = calculate_interval_metrics(np.array([5.0]), np.array([6.0]), np.array([8.0]), alpha=0.10)
         assert m_miss["coverage"] == 0.0
         assert m_miss["winkler_score"] == 22.0
+
+
+class TestRollingConformalIntervals:
+    """Validate ordered rolling updates, warm-up, and missing-value policy."""
+
+    def test_rolling_quantile_uses_only_prior_outcomes(self):
+        calibration = np.arange(1.0, 169.0)
+        lower, upper, quantiles = predict_rolling_conformal_intervals(
+            calibration, np.zeros_like(calibration), [1000.0, 0.0], [0.0, 0.0],
+            alpha=0.10, window_size=168, clip_min=0.0,
+        )
+        # ceil((168 + 1) * 0.9) selects the 153rd ordered residual.
+        assert quantiles[0] == 153.0
+        assert quantiles[1] == 154.0
+        assert lower[0] <= upper[0] and lower[1] <= upper[1]
+
+    def test_rolling_requires_full_warmup_history(self):
+        with pytest.raises(ValueError, match="Insufficient calibration history"):
+            predict_rolling_conformal_intervals(
+                np.ones(167), np.zeros(167), [1.0], [1.0], window_size=168,
+            )
+
+    def test_missing_outcomes_do_not_enter_rolling_calibration(self):
+        calibration = np.ones(168)
+        lower, upper, quantiles = predict_rolling_conformal_intervals(
+            calibration, np.zeros_like(calibration), [np.nan, 10.0], [4.0, 4.0],
+            window_size=168, clip_min=0.0,
+        )
+        assert quantiles[0] == quantiles[1] == 1.0
+        assert np.all(lower <= upper)
+
+    def test_missing_forecast_is_marked_and_not_used_for_update(self):
+        calibration = np.ones(168)
+        lower, upper, quantiles = predict_rolling_conformal_intervals(
+            calibration, np.zeros_like(calibration), [100.0, 5.0], [np.nan, 4.0],
+            window_size=168, clip_min=0.0,
+        )
+        assert np.isnan(lower[0]) and np.isnan(upper[0]) and np.isnan(quantiles[0])
+        assert quantiles[1] == 1.0
+        assert lower[1] <= upper[1]
+
+    def test_nonfinite_calibration_is_rejected(self):
+        calibration = np.ones(168)
+        calibration[0] = np.nan
+        with pytest.raises(ValueError, match="non-finite"):
+            predict_rolling_conformal_intervals(
+                calibration, np.zeros_like(calibration), [1.0], [1.0], window_size=168,
+            )

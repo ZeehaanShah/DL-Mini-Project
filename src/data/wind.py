@@ -350,6 +350,7 @@ def build_wind_datasets(
     embargo_hours: int = 24,
     scale: bool = True,
     power_curve: Optional[TurbinePowerCurve] = None,
+    split_basis: str = "legacy_source",
 ) -> Tuple[WindDataset, WindDataset, WindDataset, Optional[StandardScaler], Optional[StandardScaler]]:
     """
     Construct leakage-safe, causally aligned WindDataset instances for train, val, and test splits.
@@ -392,6 +393,7 @@ def build_wind_datasets(
         val_ratio=val_ratio,
         test_ratio=test_ratio,
         embargo_steps=embargo_hours,
+        ratio_basis=split_basis,
     )
 
     train_feat = train_df[feature_cols].to_numpy(dtype=np.float32)

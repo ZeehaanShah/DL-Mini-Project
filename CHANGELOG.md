@@ -2,6 +2,37 @@
 
 All changes are recorded with date, description, files affected, and rationale.
 
+## 2026-10-28 — Theme-aware contrast and accessibility validation
+
+- **Description:** Added shared WCAG contrast/color utilities and light/dark semantic tokens; integrated semantic CSS tokens, visible focus/disabled states, and opaque theme-aware Plotly surfaces and chart colors. Added focused contrast and chart regression tests and recorded scientific/accessibility scope and limits.
+- **Files affected:** `src/frontend/theme.py`, `src/frontend/components.py`, `src/frontend/charts.py`, `app.py`, `tests/test_theme_accessibility.py`, `reports/audit/accessibility_scientific_validation_2026-10-28.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`.
+- **Rationale:** Replace scattered fixed-light foreground styling with validated theme tokens and prevent charts from inheriting unreadable transparent/white surfaces in dark mode.
+- **Validation:** Focused tests: 14 passed. Full `python -m pytest -q`: 279 passed, 14 dependency deprecation warnings, 0 failed. Python compilation passed; Streamlit health endpoint returned 200/ok; `git diff --check` passed. Browser-level interaction remains unverified due to the prior interrupted browser-control attempt. No training, download, install, checkpoint change, commit, or push.
+- **Scientific limitations:** No scientific/energy calculations changed. Demand interval undercoverage, incomplete SKIPP'D training data, wind-direction encoding, all-hour NASA limitation, and unpaired synthetic site profiles remain; see the validation report.
+
+## 2026-10-27 — Phase 2 dashboard redesign and scientific validation
+
+- **Description:** Reworked the eight-section Streamlit dashboard for non-technical users with plain-language explanations, data-driven energy simulations, meaningful baseline comparisons, accessible result labels, visible synthetic-data/coverage limitations, and expanded scientific details. Corrected NASA W1 metric parity: raw benchmark outputs feed the headline scores; clipped nonnegative display outputs have separate scores. Added regression tests for explanations, missing model/data artifacts, invalid image uploads, and metric projection behavior. Updated demand diagnostics and matched-window baseline evidence.
+- **Files affected:** `app.py`, `src/frontend/explanations.py`, `src/frontend/model_loaders.py`, `src/frontend/charts.py`, `src/decision_support/energy_balance.py`, `tests/test_frontend.py`, `tests/test_explanations.py`, `tests/test_decision_support.py`, `reports/audit/fix_log.md`, `reports/audit/verified_metrics.md`, `reports/audit/final_validation_report.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`.
+- **Rationale:** Make the app understandable without obscuring model limits or presenting synthetic outputs as site feasibility; align the app's test metric with the frozen raw-output evaluation.
+- **Validation:** `python -m py_compile app.py src/frontend/model_loaders.py tests/test_frontend.py` passed; `python -m pytest -q` passed (216 tests, 14 dependency deprecation warnings). Streamlit startup and all eight sections were exercised in the browser. Verified capacity slider values update the context card and simulation; terminal SOC reports infeasibility for an unachievable setting; missing checkpoint/data and malformed/tiny uploads have automated coverage. No traceback or browser-console error was observed. NASA full-test raw MAE/RMSE/R² reproduced at 16.2575/30.1767/0.9844; nonnegative-projected results 15.4667/30.1125/0.9845 with 339 negative raw points out of 1,242.
+- **Remaining limitations:** Demand interval coverage is 66.03%/85.47% against 80%/90% targets; matched tests show Demand D2 MAE slightly worse than persistence; greedy dispatch does not reschedule to satisfy cyclic SOC; C3/C4 wind direction still uses linear degrees; four SKIPP'D training shards are missing; source profiles are not co-located; Streamlit `use_container_width` deprecation remains.
+
+## 2026-10-27 — Isolated audit fixes and validation
+
+- Description: Created an independent Downloads copy and repaired dashboard metric sourcing, NASA checkpoint architecture inference, split-ratio handling, prediction-domain validation, battery carry-in attribution/costing, interval-duration conversion, uncertainty language, and synthetic scenario descriptions. Added README and regression coverage; regenerated Stage 4/5 outputs.
+- Files affected: README.md, PROJECT_CONTEXT.md, CHANGELOG.md, app.py, scripts/evaluate_test_set.py, src/data builders/splitter, src/decision_support modules, src/frontend/model_loaders.py, tests, registry/output tables, Stage 3/5 reports, reports/audit.
+- Rationale: Resolve reproduced pipeline issues while preserving frozen checkpoints and leaving the original working tree and Git history untouched.
+- Validation: 205 passed / 16 warnings; frozen-checkpoint test metrics reproduced; uncertainty and decision-support scripts exited successfully; Streamlit returned HTTP 200. No training or package installation.
+- Open limitations: demand conformal undercoverage, no cyclic terminal SOC constraint, C3/C4 circular direction encoding, incomplete SKIPP'D training shards, and synthetic non-co-located Model E profiles. See reports/audit/final_validation_report.md.
+
+## 2026-10-27 — Read-only code and results audit
+
+- **Description:** Documented a static review of pipeline code, saved experiment outputs, dashboard metrics, uncertainty results, and decision-support accounting.
+- **Files affected:** `reports/code_pipeline_audit_2026-10-27.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`.
+- **Rationale:** The user requested a problem map and actionable fix plan while explicitly prohibiting code and Git-history changes.
+- **Validation:** Inspected source/configuration and existing CSV/JSON/report/checkpoint-history artifacts; checked current `.venv` package metadata and the pre-existing Git working-tree diff. No tests or application run performed. No code, data, checkpoint, or Git-history changes made.
+
 ---
 
 ## 2026-10-20 — Phase 1: Project Initialization and Data Audit
@@ -851,4 +882,30 @@ eports/baseline_report.md and PROJECT_CONTEXT.md.
   7. **Strict Scope Compliance**:
      - Zero modifications to model checkpoints, neural-network code, training scripts, test splits, or physical formulas.
      - **No application execution, automated testing, or model runs performed.**
+
+
+## 2026-10-27 — Phase 3 scientific follow-up (incomplete)
+
+- **Description:** Added battery-dispatch, NASA constraint, demand uncertainty, and matched-baseline reports. Recomputed NASA baselines using exact 24-hour history and withdrew the mismatched Phase 2 values. Ran 240-hour cyclic MILP and validation-only rolling-calibration diagnostics.
+- **Files affected:** `reports/audit/fix_log.md`, `verified_metrics.md`, `final_validation_report.md`, `baseline_comparison_report.md`, `battery_dispatch_validation.md`, `demand_uncertainty_analysis.md`, `nasa_irradiance_constraint_analysis.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`.
+- **Validation:** Cyclic check reached 125 kWh end SOC, 0 unmet load and no simultaneous charge/discharge. Full pytest: 215 passed, 5 failed, 17 warnings. Syntax compile in-memory passed for 8 source/test files; no post-regression app/browser verification.
+- **Blocker:** Automatic reviewer rejected a source edit citing Desktop-project protection and test-outcome update risk. Dashboard demand intervals remain fixed split conformal; rolling candidate is not deployed. No workaround, training, checkpoint/data changes, commit or push.
+
+### Validation correction
+The rolling-helper source-edit attempt partially changed `src/uncertainty/conformal.py` and `src/frontend/model_loaders.py` before review blocked a follow-up. The incomplete references cause the five reported failures. Streamlit server startup succeeded; page-level UI verification was stopped by the user via physical Escape and is not claimed.
+
+## 2026-10-27 — Phase 3 resumption: causal rolling uncertainty integration
+
+- **Description:** Completed the previously incomplete wind and demand evaluator repair. Added a fixed trailing-window prequential conformal evaluator, distinct fixed/rolling dashboard metrics, demand visualization labeling, and regression tests. Corrected superseded rolling-window results in the audit record.
+- **Files affected:** `src/uncertainty/conformal.py`, `src/frontend/model_loaders.py`, `app.py`, `tests/test_uncertainty.py`, `tests/test_frontend.py`; status updates in `PROJECT_CONTEXT.md`, `reports/audit/verified_metrics.md`, `reports/audit/fix_log.md`, and `reports/audit/final_validation_report.md`.
+- **Validation:** `python -m pytest -q` — 265 passed, 14 warnings, 0 failed (35.93 s); in-memory Python compilation passed for six source/test files. NASA W1 evaluator replay reproduced raw and projected metrics. Demand D2 rolling-168 full test replay: 90.16% coverage, 12.8404 kWh mean width, Winkler 20.2323, N=2,561. Cyclic MILP 240-hour check reached 125 kWh terminal SOC with zero unmet demand and zero SOC residual. Streamlit started and landing page rendered; page 5/6 browser interaction was not completed.
+- **Scope:** Downloads copy only. No changes to raw data, checkpoints, training, Desktop original, or Git history; no commit or push.
+
+## 2026-10-28 — Phase 4 final verification
+
+- **Description:** Reviewed latest audit reports, current source diff, test status, rolling calibration protocol, cyclic solver constraints, and app startup. No source changes or new features were needed.
+- **Files affected:** `reports/audit/final_validation_report.md`, `PROJECT_CONTEXT.md`, `CHANGELOG.md`.
+- **Validation:** One `python -m pytest -q` run: 265 passed, 0 failed, 0 skipped, 14 warnings (25.96 s). In-memory syntax compile passed for nine relevant files. Streamlit health endpoint returned 200 ok. Prior Phase 3 direct demand/NASA/battery checks remain attributed to that phase; this phase did not repeat their complete metric replays.
+- **Acceptance caveat:** Browser interactions remain unverified; only the prior landing-page navigation was observed. Per Phase 4 instructions, the earlier interrupted browser interaction was not bypassed. The exact 240-hour battery profile inputs are not specified in the audit report, limiting exact numeric reproduction.
+- **Scope:** Existing Downloads copy only; Desktop original and Git history untouched. No training, data download, package install, checkpoint change, commit, or push.
 

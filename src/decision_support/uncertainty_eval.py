@@ -93,8 +93,8 @@ def evaluate_uncertainty_feasibility(
     b_cfg = battery_config if battery_config is not None else BatteryConfig(capacity_kwh=0.0)
 
     # 1. Central Scenario (Point forecasts)
-    s_gen_cent = convert_irradiance_to_solar_pv_kwh(solar_irradiance_central, solar_capacity_kw)
-    w_gen_cent = convert_wind_speed_to_generation_kwh(wind_speed_central, wind_capacity_kw)
+    s_gen_cent = convert_irradiance_to_solar_pv_kwh(solar_irradiance_central, solar_capacity_kw, time_step_hours=time_step_hours)
+    w_gen_cent = convert_wind_speed_to_generation_kwh(wind_speed_central, wind_capacity_kw, time_step_hours=time_step_hours)
     r_cent = s_gen_cent + w_gen_cent
     ts_cent, m_cent = simulate_energy_dispatch(
         demand_kwh=demand_central_kwh,
@@ -113,8 +113,8 @@ def evaluate_uncertainty_feasibility(
     )
 
     # 2. Conservative / Stress Scenario (Lower renewables, Upper demand)
-    s_gen_low = convert_irradiance_to_solar_pv_kwh(solar_irradiance_lower, solar_capacity_kw)
-    w_gen_low = convert_wind_speed_to_generation_kwh(wind_speed_lower, wind_capacity_kw)
+    s_gen_low = convert_irradiance_to_solar_pv_kwh(solar_irradiance_lower, solar_capacity_kw, time_step_hours=time_step_hours)
+    w_gen_low = convert_wind_speed_to_generation_kwh(wind_speed_lower, wind_capacity_kw, time_step_hours=time_step_hours)
     r_low = s_gen_low + w_gen_low
     ts_stress, m_stress = simulate_energy_dispatch(
         demand_kwh=demand_upper_kwh,
@@ -133,8 +133,8 @@ def evaluate_uncertainty_feasibility(
     )
 
     # 3. Favorable / Optimistic Scenario (Upper renewables, Lower demand)
-    s_gen_upp = convert_irradiance_to_solar_pv_kwh(solar_irradiance_upper, solar_capacity_kw)
-    w_gen_upp = convert_wind_speed_to_generation_kwh(wind_speed_upper, wind_capacity_kw)
+    s_gen_upp = convert_irradiance_to_solar_pv_kwh(solar_irradiance_upper, solar_capacity_kw, time_step_hours=time_step_hours)
+    w_gen_upp = convert_wind_speed_to_generation_kwh(wind_speed_upper, wind_capacity_kw, time_step_hours=time_step_hours)
     r_upp = s_gen_upp + w_gen_upp
     ts_opt, m_opt = simulate_energy_dispatch(
         demand_kwh=demand_lower_kwh,

@@ -74,6 +74,7 @@ def split_timeseries_chronological(
     val_ratio: float = 0.15,
     test_ratio: float = 0.15,
     embargo_steps: int = 24,
+    ratio_basis: str = "retained",
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Split time series dataframe chronologically into train, val, and test partitions
@@ -86,26 +87,47 @@ def split_timeseries_chronological(
         val_ratio: Fraction of rows for validation.
         test_ratio: Fraction of rows for testing.
         embargo_steps: Number of steps to purge between split boundaries.
+        ratio_basis: "retained" allocates the requested ratios across rows after removing
+            both embargo gaps. "legacy_source" preserves historical checkpoint boundaries.
 
     Returns:
         Tuple of (train_df, val_df, test_df).
     """
-    assert np.isclose(train_ratio + val_ratio + test_ratio, 1.0), "Split ratios must sum to 1.0"
-    assert embargo_steps >= 0, "embargo_steps must be non-negative"
+    ratios = np.asarray([train_ratio, val_ratio, test_ratio], dtype=np.float64)
+    if not np.isfinite(ratios).all() or np.any(ratios <= 0.0) or not np.isclose(ratios.sum(), 1.0):
+        raise ValueError("Split ratios must be finite, positive, and sum to 1.0")
+    if embargo_steps < 0:
+        raise ValueError("embargo_steps must be non-negative")
+    if ratio_basis not in {"retained", "legacy_source"}:
+        raise ValueError("ratio_basis must be 'retained' or 'legacy_source'")
     n = len(df)
 
     if time_col is not None:
         assert df[time_col].is_monotonic_increasing, f"{time_col} must be monotonically increasing"
         assert not df[time_col].duplicated().any(), f"{time_col} contains duplicate timestamps"
 
-    train_end = int(n * train_ratio)
-    val_start = train_end + embargo_steps
-    val_end = val_start + int(n * val_ratio)
-    test_start = val_end + embargo_steps
-    test_end = n
+    if ratio_basis == "retained":
+        retained = n - 2 * embargo_steps
+        if retained <= 0:
+            raise ValueError("Series is too short for the requested embargo gaps")
+        train_size = int(np.floor(retained * train_ratio))
+        val_size = int(np.floor(retained * val_ratio))
+        test_size = retained - train_size - val_size
+        train_end = train_size
+        val_start = train_end + embargo_steps
+        val_end = val_start + val_size
+        test_start = val_end + embargo_steps
+        test_end = test_start + test_size
+    else:
+        # Preserve the historical boundaries used to train existing checkpoints.
+        train_end = int(n * train_ratio)
+        val_start = train_end + embargo_steps
+        val_end = val_start + int(n * val_ratio)
+        test_start = val_end + embargo_steps
+        test_end = n
 
-    assert val_start < val_end, "Embargo too large relative to validation set size"
-    assert test_start < test_end, "Embargo too large relative to test set size"
+    if train_end <= 0 or val_start >= val_end or test_start >= test_end:
+        raise ValueError("Series is too short for the requested ratios and embargo")
 
     train_df = df.iloc[:train_end].copy()
     val_df = df.iloc[val_start:val_end].copy()
